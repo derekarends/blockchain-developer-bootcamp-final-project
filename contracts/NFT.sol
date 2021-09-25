@@ -24,8 +24,8 @@ contract NFT is ERC721URIStorage {
   }
 
   /**
-   * Create a new NFT Token
-   * @param _tokenURI The url of the NFT
+   * @dev Create a new Ownership token to be associated with asset
+   * @param _tokenURI The url of the asset
    * @return uint256 as a new tokenId
    */
   function createToken(string memory _tokenURI) public returns (uint256) {

@@ -36,6 +36,7 @@ contract Marketplace is ReentrancyGuard {
   struct Asset {
     uint256 id;
     address nftContract;
+    uint256 tokenId;
     string title;
     string description;
     uint256 price;
@@ -75,7 +76,7 @@ contract Marketplace is ReentrancyGuard {
   }
 
   /* 
-   * @dev Initialize the contract assigning the owner to the creator
+   * Initialize the contract assigning the owner to the creator
    */
   constructor() {
     owner = payable(msg.sender);
@@ -85,22 +86,38 @@ contract Marketplace is ReentrancyGuard {
    * Functions
    */
 
-  /**
-   * @dev Change minimum asset price
+   /**
+   * Gets the listing price for this market place
+   * @return int256 as the market place listing price
    */
-  function changeMinimumAssetPirce(uint256 _newPrice) public onlyOwner {
-    minAssetPrice = _newPrice;
+  function getListingPrice() public view returns (uint256) {
+    return listingPrice;
   }
 
    /**
-   * @dev Change listing price
+   * Set listing price
    */
-  function changeListingPirce(uint256 _newPrice) public onlyOwner {
-    listingPrice = _newPrice;
+  function setListingPrice(uint256 _newPrice) public onlyOwner {
+    listingPrice = _newPrice * (1 ether);
   }
 
   /**
-   * @dev Get an individual asset based on _id
+   * Gets the listing price for this market place
+   * @return int256 as the market place listing price
+   */
+  function getMinAssetPrice() public view returns (uint256) {
+    return minAssetPrice;
+  }
+
+  /**
+   * Set the minimum asset price
+   */
+  function setMinimumAssetPrice(uint256 _newPrice) public onlyOwner {
+    minAssetPrice = _newPrice * (1 ether);
+  }
+
+  /**
+   * Get an individual asset based on _id
    * @param _id The id of the asset
    * @return The requested asset
    */
@@ -109,7 +126,7 @@ contract Marketplace is ReentrancyGuard {
   }
 
   /**
-   * @dev Get an individual loan based on _id
+   * Get an individual loan based on _id
    * @param _id The id of the loan
    * @return The requested loan
    */
@@ -118,38 +135,56 @@ contract Marketplace is ReentrancyGuard {
   }
 
   /**
-   * @dev List an asset for sale
+   * List an asset for sale
    */
-   function listAsset() public {
-     uint256 assetId = assetIds.current();
-     assetIds.increment();
-     
-     emit AssetListed(assetId);
-   }
+  function listAsset() public {
+    uint256 assetId = assetIds.current();
+    assetIds.increment();
+    
+    emit AssetListed(assetId);
+  }
 
    /**
    * Creates the market item
-   * @dev Will emit the MarketItemCreated event and required eth
+   * Will emit the MarketItemCreated event and required eth
    * @param nftContract The Address of the nft
    * @param tokenId The token id
+   * @param title The title of the asset
+   * @param description The description of the asset
    * @param price The current price of the nft
    */
-   function listAsset(
-     address nftContract,
-     uint256 tokenId,
-     uint256 price
-     ) public payable nonReentrant {
-      require(price >= minAssetPrice, "Price must be at least the minimum listing price");
-      require(msg.value == listingPrice, "Must send in listing price");
+  function listAsset(
+    address nftContract, 
+    uint256 tokenId, 
+    string memory title, 
+    string memory description,
+    uint256 price
+  ) 
+    public 
+    payable 
+    nonReentrant 
+  {
+    require(price >= minAssetPrice, "Price must be at least the minimum listing price");
+    require(msg.value == listingPrice, "Must send in listing price");
 
-      assetIds.increment();
-      uint256 assetId = assetIds.current();
+    assetIds.increment();
+    uint256 assetId = assetIds.current();
 
-      // assets[assetId] = Asset();
+    assets[assetId] = Asset(
+      assetId,
+      nftContract,
+      tokenId,
+      title,
+      description,
+      price,
+      State.ForSale,
+      payable(msg.sender),
+      payable(address(0)),
+      payable(address(0))
+    );
 
-      // TODO: Should be safeTransferFrom
-      IERC721(nftContract).transferFrom(msg.sender, address(this), tokenId);
+    IERC721(nftContract).transferFrom(msg.sender, address(this), tokenId);
 
-      emit AssetListed(assetId);
-   }
+    emit AssetListed(assetId);
+  }
 }

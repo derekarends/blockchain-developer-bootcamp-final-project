@@ -1,4 +1,4 @@
-import { ethers } from "hardhat";
+import { ethers } from 'hardhat';
 
 /**
  * To Deploy
@@ -16,11 +16,17 @@ async function main() {
   // await hre.run('compile');
 
   // We get the contract to deploy
-  const GretterFactory = await ethers.getContractFactory("Greeter");
-  const gretter = await GretterFactory.deploy();
+  const Marketplace = await ethers.getContractFactory('Marketplace');
+  const market = await Marketplace.deploy();
 
-  await gretter.deployed();
-  console.log("Greeter deployed to:", gretter.address);
+  await market.deployed();
+  console.log('Marketplace deployed to:', market.address);
+
+  const NFT = await ethers.getContractFactory('NFT');
+  const nft = await NFT.deploy(market.address);
+
+  await nft.deployed();
+  console.log('NFT deployed to:', nft.address);
 }
 
 main()
