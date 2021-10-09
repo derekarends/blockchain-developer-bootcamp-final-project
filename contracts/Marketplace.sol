@@ -134,16 +134,6 @@ contract Marketplace is ReentrancyGuard {
     return loans[_id];
   }
 
-  /**
-   * List an asset for sale
-   */
-  function listAsset() public {
-    uint256 assetId = assetIds.current();
-    assetIds.increment();
-    
-    emit AssetListed(assetId);
-  }
-
    /**
    * Creates the market item
    * Will emit the MarketItemCreated event and required eth

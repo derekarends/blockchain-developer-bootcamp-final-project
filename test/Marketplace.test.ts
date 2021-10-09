@@ -83,4 +83,36 @@ describe(`${ContractName}`, () => {
       }
     });
   });
+
+  describe('listAsset', async () => {
+    it('should require price to be > 0', async () => {
+      try {
+        await marketplace.listAsset(nft.address, 1, 'title', 'description', 0, { value: listingPrice });
+        expect.fail('The transaction should have thrown an error');
+      } catch (ex) {
+        const err = ex as Error;
+        expect(err.message).to.contain('Price must be at least the minimum listing price');
+      }
+    });
+
+    it('should require msg.value to be listing price', async () => {
+      try {
+        await marketplace.listAsset(nft.address, 1, 'title', 'description', ethers.utils.parseUnits("1", "ether"), { value: 0 });
+        expect.fail('The transaction should have thrown an error');
+      } catch (ex) {
+        const err = ex as Error;
+        expect(err.message).to.contain('Must send in listing price');
+      }
+    });
+
+    it('should emit a asset was listed', async () => {
+      await nft.createToken('https://www.mytokenlocation.com');
+        
+      const tx = await marketplace.listAsset(nft.address, 1, 'title', 'description', ethers.utils.parseUnits("1", "ether"), { value: listingPrice });
+      expect(tx).to.emit(marketplace, 'AssetListed');
+
+      const balance = await marketplace.provider.getBalance(marketplace.address);
+      expect(balance).to.be.eq(listingPrice);
+    });
+  });
 });
