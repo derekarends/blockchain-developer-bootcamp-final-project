@@ -1,8 +1,10 @@
-export type NFT = {
+export type Asset = {
   id: number,
-  title: string,
+  name: string,
   description: string,
-  img: string
+  price: string,
+  seller: string,
+  image: string
 }
 
 export type Loan = {

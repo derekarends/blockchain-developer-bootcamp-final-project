@@ -1,12 +1,12 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { Col, Container, Row, Button, Card, Image, ListGroup } from 'react-bootstrap';
-import { Loan, NFT } from '../components/Types';
+import { Loan, Asset } from '../components/Types';
 import Title from '../components/Title';
 import Routes from '../utils/Routes';
 
 function Dashboard() {
-  const asset: NFT = { id: 1, title: 'Title', description: 'Desc', img: '' };
+  const asset: Asset = { id: 1, name: 'Title', description: 'Desc', image: '', price: '', seller: '' };
   const loans: Loan[] = [
     {
       id: 1,
@@ -24,12 +24,12 @@ function Dashboard() {
     <Container>
       <Row className="mb-16">
         <div className="d-flex justify-content-end">
-          <Link href={Routes.Asset}>
+          <Link href={Routes.CreateAsset}>
             <Button variant="outline-primary" className="mr-16">
               Create Listing
             </Button>
           </Link>
-          <Link href={Routes.Loan}>
+          <Link href={Routes.CreateLoan}>
             <Button variant="outline-primary">
               Create Loan
             </Button>

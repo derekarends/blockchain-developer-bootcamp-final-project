@@ -16,6 +16,8 @@ contract Marketplace is ReentrancyGuard {
   using Counters for Counters.Counter;
   Counters.Counter private assetIds;
   Counters.Counter private loanIds;
+  Counters.Counter private soldAssetCount;
+
   address payable private owner;
   uint256 private listingPrice = 0.025 ether;
   uint256 private minAssetPrice = 0.5 ether;
@@ -37,8 +39,6 @@ contract Marketplace is ReentrancyGuard {
     uint256 id;
     address nftContract;
     uint256 tokenId;
-    string title;
-    string description;
     uint256 price;
     State state;
     address payable owner;
@@ -117,6 +117,26 @@ contract Marketplace is ReentrancyGuard {
   }
 
   /**
+   * Get all assets
+   * @return assetsToReturn is the list of assets available
+   */
+  function getListings() public view returns(Asset[] memory assetsToReturn) {
+    uint256 numOfAllAssets = assetIds.current();
+    uint256 numOfUnsoldAssets = numOfAllAssets - soldAssetCount.current();
+    uint256 currentIndex = 0;
+    assetsToReturn = new Asset[](numOfUnsoldAssets);
+
+    for (uint256 i = 1; i <= numOfAllAssets; i++) {
+      if (assets[i].state == State.ForSale) {
+        assetsToReturn[currentIndex] = assets[i];
+        currentIndex += 1;
+      }
+    }
+
+    return assetsToReturn;
+   }
+
+  /**
    * Get an individual asset based on _id
    * @param _id The id of the asset
    * @return The requested asset
@@ -139,15 +159,11 @@ contract Marketplace is ReentrancyGuard {
    * Will emit the MarketItemCreated event and required eth
    * @param nftContract The Address of the nft
    * @param tokenId The token id
-   * @param title The title of the asset
-   * @param description The description of the asset
    * @param price The current price of the nft
    */
   function listAsset(
     address nftContract, 
     uint256 tokenId, 
-    string memory title, 
-    string memory description,
     uint256 price
   ) 
     public 
@@ -164,8 +180,6 @@ contract Marketplace is ReentrancyGuard {
       assetId,
       nftContract,
       tokenId,
-      title,
-      description,
       price,
       State.ForSale,
       payable(msg.sender),
@@ -176,5 +190,13 @@ contract Marketplace is ReentrancyGuard {
     IERC721(nftContract).transferFrom(msg.sender, address(this), tokenId);
 
     emit AssetListed(assetId);
+  }
+
+  /**
+   * Buys a market item
+   */
+  function buyAsset(uint256 _id) public payable {
+    require(assets[id].seller != address(0) && assets[_id].state == State.ForSale, "Asset is not for sale");
+
   }
 }

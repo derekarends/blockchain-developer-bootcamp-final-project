@@ -1,12 +1,62 @@
 import * as React from 'react';
+import { ethers, BigNumber } from 'ethers';
+import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { Col, Container, Row, Button, Card, Image, ListGroup } from 'react-bootstrap';
-import { Loan, NFT } from '../../components/Types';
+import { Col, Container, Row, Button, Image, ListGroup } from 'react-bootstrap';
+import { Loan, Asset } from '../../components/Types';
 import Title from '../../components/Title';
 import Routes from '../../utils/Routes';
+import { NFT } from '../../typechain/NFT';
+import { Marketplace } from '../../typechain/Marketplace';
+import NFTContract from '../../artifacts/contracts/NFT.sol/NFT.json';
+import MarketplaceContract from '../../artifacts/contracts/Marketplace.sol/Marketplace.json';
+import { NftAddress, MarketAddress } from '../../utils/EnvVars';
+import { FetchState } from '../../components/Enums';
 
-function Asset() {
-  const asset: NFT = { id: 1, title: 'Title', description: 'Desc', img: '' };
+function AssetDetails() {
+  const [asset, setAsset] = React.useState<Asset>();
+  const [state, setState] = React.useState<FetchState>(FetchState.loading);
+  const router = useRouter();
+  const { id } = router.query;
+  
+  React.useEffect(() => {
+    loadAsset()
+  }, []);
+
+  async function loadAsset() {
+    const provider = new ethers.providers.JsonRpcProvider();
+    const tokenContract = new ethers.Contract(NftAddress, NFTContract.abi, provider) as NFT;
+    const marketContract = new ethers.Contract(MarketAddress, MarketplaceContract.abi, provider) as Marketplace;
+    const a = await marketContract.getAsset(BigNumber.from(id));
+
+    
+    const tokenUri = await tokenContract.tokenURI(a.tokenId);
+    const meta = JSON.parse(tokenUri);
+    const price = ethers.utils.formatUnits(a.price.toString(), 'ether');
+    const item: Asset = {
+      id: a.tokenId.toNumber(),
+      name: meta.name,
+      description: meta.description,
+      price,
+      seller: a.seller,
+      image: meta.image,
+    };
+    setAsset(item);
+    setState(FetchState.idle);
+  }
+
+  async function buyAsset() {
+    const provider = new ethers.providers.JsonRpcProvider();
+    const tokenContract = new ethers.Contract(NftAddress, NFTContract.abi, provider) as NFT;
+    const marketContract = new ethers.Contract(MarketAddress, MarketplaceContract.abi, provider) as Marketplace;
+
+    await marketContract.
+  }
+
+  if (state === FetchState.loading) {
+    return <div>Loading...</div>
+  }
+
   const loans: Loan[] = [
     {
       id: 1,
@@ -24,13 +74,13 @@ function Asset() {
     <Container>
       <Row>
         <Col md={4}>
-          <Image src="holder.js/100px180" />
+          <Image src={asset.image} />
         </Col>
         <Col>
           <Row className="mb-16">
             <Col>
               <div className="fw-bold">Title</div>
-              <div>{asset.title}</div>
+              <div>{asset.name}</div>
             </Col>
           </Row>
           <Row className="mb-16">
@@ -39,9 +89,15 @@ function Asset() {
               <div>{asset.description}</div>
             </Col>
           </Row>
+          <Row className="mb-16">
+            <Col>
+              <div className="fw-bold">Price</div>
+              <div>{asset.price}</div>
+            </Col>
+          </Row>
           <Row>
             <Col>
-              <Button style={{width: '64px'}}>Buy</Button>
+              <Button style={{ width: '64px' }}>Buy</Button>
             </Col>
           </Row>
         </Col>
@@ -73,4 +129,4 @@ function Asset() {
   );
 }
 
-export default Asset;
+export default AssetDetails;
