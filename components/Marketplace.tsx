@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Container, Nav, Navbar } from 'react-bootstrap';
 import Routes from '../utils/Routes';
 import { Status, useAuth } from '../components/AuthContext';
+import Snack from './Snack';
 
 function Marketplace({ Component, pageProps }) {
   const auth = useAuth();
@@ -46,6 +47,7 @@ function Marketplace({ Component, pageProps }) {
         </Container>
       </Navbar>
       <Container style={{ padding: '16px' }}>
+        <Snack />
         <Component {...pageProps} />
       </Container>
     </>

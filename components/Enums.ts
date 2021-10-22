@@ -1,4 +1,5 @@
 export enum FetchState {
   loading,
-  idle
+  idle,
+  buying
 }

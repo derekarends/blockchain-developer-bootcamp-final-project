@@ -26,6 +26,7 @@ function Index() {
     const data = await marketContract.getListings();
 
     const items: Asset[] = await Promise.all(data.map(async i => {
+      console.log(i.tokenId);
       const tokenUri = await tokenContract.tokenURI(i.tokenId);
       const meta = JSON.parse(tokenUri);
       const price = ethers.utils.formatUnits(i.price.toString(), 'ether');

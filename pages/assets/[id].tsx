@@ -3,7 +3,7 @@ import { ethers, BigNumber } from 'ethers';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { Col, Container, Row, Button, Image, ListGroup } from 'react-bootstrap';
-import { Loan, Asset } from '../../components/Types';
+import { Loan, Asset, EthError } from '../../components/Types';
 import Title from '../../components/Title';
 import Routes from '../../utils/Routes';
 import { NFT } from '../../typechain/NFT';
@@ -12,8 +12,12 @@ import NFTContract from '../../artifacts/contracts/NFT.sol/NFT.json';
 import MarketplaceContract from '../../artifacts/contracts/Marketplace.sol/Marketplace.json';
 import { NftAddress, MarketAddress } from '../../utils/EnvVars';
 import { FetchState } from '../../components/Enums';
+import { useAuth } from '../../components/AuthContext';
+import { Status, useSnack } from '../../components/SnackContext';
 
 function AssetDetails() {
+  const auth = useAuth();
+  const snack = useSnack();
   const [asset, setAsset] = React.useState<Asset>();
   const [state, setState] = React.useState<FetchState>(FetchState.loading);
   const router = useRouter();
@@ -46,11 +50,22 @@ function AssetDetails() {
   }
 
   async function buyAsset() {
-    const provider = new ethers.providers.JsonRpcProvider();
-    const tokenContract = new ethers.Contract(NftAddress, NFTContract.abi, provider) as NFT;
-    const marketContract = new ethers.Contract(MarketAddress, MarketplaceContract.abi, provider) as Marketplace;
+    setState(FetchState.buying);
 
-    await marketContract.
+    const marketContract = new ethers.Contract(MarketAddress, MarketplaceContract.abi, auth.signer) as Marketplace;
+
+    try {
+      const price = ethers.utils.parseUnits(asset.price.toString(), 'ether');
+      const transaction = await marketContract.buyAsset(BigNumber.from(id), {
+        value: price
+      });
+      await transaction.wait();
+      router.push(`${Routes.Dashboard}`);
+    } catch (e: unknown) {
+      const err = e as EthError;
+      snack.display(Status.error, err?.data?.message ?? 'Something went wrong');
+      setState(FetchState.idle);
+    }
   }
 
   if (state === FetchState.loading) {
@@ -97,7 +112,13 @@ function AssetDetails() {
           </Row>
           <Row>
             <Col>
-              <Button style={{ width: '64px' }}>Buy</Button>
+              <Button
+                style={{ width: '64px' }}
+                onClick={buyAsset}
+                disabled={state === FetchState.buying}
+              >
+                Buy
+              </Button>
             </Col>
           </Row>
         </Col>

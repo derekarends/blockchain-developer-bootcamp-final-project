@@ -12,3 +12,12 @@ export type Loan = {
   name: string,
   description: string
 }
+
+export type EthError = {
+  code: number,
+  message: string,
+  data: {
+    code: number,
+    message: string,
+  }
+}

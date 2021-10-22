@@ -4,6 +4,8 @@ pragma solidity ^0.8.4;
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "hardhat/console.sol";
+
 
 /**
  * @author Derek Arends
@@ -41,8 +43,8 @@ contract Marketplace is ReentrancyGuard {
     uint256 tokenId;
     uint256 price;
     State state;
-    address payable owner;
     address payable seller;
+    address payable owner;
     address payable lender;
   }
 
@@ -120,14 +122,18 @@ contract Marketplace is ReentrancyGuard {
    * Get all assets
    * @return assetsToReturn is the list of assets available
    */
-  function getListings() public view returns(Asset[] memory assetsToReturn) {
+  function getListings() 
+    external 
+    view 
+    returns(Asset[] memory assetsToReturn) 
+  {
     uint256 numOfAllAssets = assetIds.current();
     uint256 numOfUnsoldAssets = numOfAllAssets - soldAssetCount.current();
     uint256 currentIndex = 0;
     assetsToReturn = new Asset[](numOfUnsoldAssets);
 
     for (uint256 i = 1; i <= numOfAllAssets; i++) {
-      if (assets[i].state == State.ForSale) {
+      if (assets[i].seller != address(0) && assets[i].state == State.ForSale) {
         assetsToReturn[currentIndex] = assets[i];
         currentIndex += 1;
       }
@@ -135,6 +141,23 @@ contract Marketplace is ReentrancyGuard {
 
     return assetsToReturn;
    }
+
+  //  function fetchUnsoldItems() public view returns(MarketItem[] memory) {
+  //   uint256 itemCount = _itemIds.current();
+  //   uint256 unsoldItemsCount = itemCount - _itemsSold.current();
+  //   uint256 currentIndex = 0;
+
+  //   MarketItem[] memory unsoldItems = new MarketItem[](unsoldItemsCount);
+
+  //   for(uint256 i = 1; i <= itemCount; i++) {
+  //     if (_itemIdToMarketItem[i].owner == address(0)) {
+  //       unsoldItems[currentIndex] = _itemIdToMarketItem[i];
+  //       currentIndex += 1;
+  //     }
+  //   }
+
+  //   return unsoldItems;
+  // }
 
   /**
    * Get an individual asset based on _id
@@ -166,7 +189,7 @@ contract Marketplace is ReentrancyGuard {
     uint256 tokenId, 
     uint256 price
   ) 
-    public 
+    external 
     payable 
     nonReentrant 
   {
@@ -194,9 +217,30 @@ contract Marketplace is ReentrancyGuard {
 
   /**
    * Buys a market item
+   * @param _id The Id of an asset
    */
-  function buyAsset(uint256 _id) public payable {
-    require(assets[id].seller != address(0) && assets[_id].state == State.ForSale, "Asset is not for sale");
+  function buyAsset(uint256 _id) 
+    external 
+    payable 
+    nonReentrant 
+  {
+    Asset storage asset = assets[_id];
+    
+    require(asset.seller != address(0) && asset.state == State.ForSale, "Asset is not for sale");
+    require(asset.seller != msg.sender, "No need to buy your own asset");
+    require(asset.price == msg.value, "Invalid amount sent");
+    
+    IERC721(asset.nftContract).transferFrom(address(this), msg.sender, asset.tokenId);
+    asset.state = State.NotForSale;
+    asset.owner = payable(msg.sender);
 
+    (bool sellerGotFunds, ) = asset.seller.call{value: asset.price}("");
+    require(sellerGotFunds, "Failed to transfer value to seller");
+
+    (bool feeTransfered, ) = owner.call{value: listingPrice}("");
+    require(feeTransfered, "Failed to transfer fee");
+
+    soldAssetCount.increment();
+    emit AssetSold(_id);
   }
 }

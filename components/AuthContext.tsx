@@ -59,8 +59,6 @@ function AuthProvider(props: any) {
   React.useLayoutEffect(() => {
     isMetaMaskConnected().then((result: boolean) => {
       const { ethereum } = window;
-      console.log(ethereum);
-      console.log(result);
       if (result && ethereum) {
         var provider = new ethers.providers.Web3Provider(ethereum);
         setState({ signer: provider.getSigner(), status: Status.connected });
