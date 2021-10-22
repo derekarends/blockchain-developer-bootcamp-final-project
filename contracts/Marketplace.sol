@@ -119,6 +119,24 @@ contract Marketplace is ReentrancyGuard {
   }
 
   /**
+   * Get an individual asset based on _id
+   * @param _id The id of the asset
+   * @return The requested asset
+   */
+  function getAsset(uint256 _id) public view returns(Asset memory) {
+    return assets[_id];
+  }
+
+  /**
+   * Get an individual loan based on _id
+   * @param _id The id of the loan
+   * @return The requested loan
+   */
+  function getLoan(uint256 _id) public view returns(Loan memory) {
+    return loans[_id];
+  }
+
+  /**
    * Get all assets
    * @return assetsToReturn is the list of assets available
    */
@@ -141,41 +159,6 @@ contract Marketplace is ReentrancyGuard {
 
     return assetsToReturn;
    }
-
-  //  function fetchUnsoldItems() public view returns(MarketItem[] memory) {
-  //   uint256 itemCount = _itemIds.current();
-  //   uint256 unsoldItemsCount = itemCount - _itemsSold.current();
-  //   uint256 currentIndex = 0;
-
-  //   MarketItem[] memory unsoldItems = new MarketItem[](unsoldItemsCount);
-
-  //   for(uint256 i = 1; i <= itemCount; i++) {
-  //     if (_itemIdToMarketItem[i].owner == address(0)) {
-  //       unsoldItems[currentIndex] = _itemIdToMarketItem[i];
-  //       currentIndex += 1;
-  //     }
-  //   }
-
-  //   return unsoldItems;
-  // }
-
-  /**
-   * Get an individual asset based on _id
-   * @param _id The id of the asset
-   * @return The requested asset
-   */
-  function getAsset(uint256 _id) public view returns(Asset memory) {
-    return assets[_id];
-  }
-
-  /**
-   * Get an individual loan based on _id
-   * @param _id The id of the loan
-   * @return The requested loan
-   */
-  function getLoan(uint256 _id) public view returns(Loan memory) {
-    return loans[_id];
-  }
 
    /**
    * Creates the market item
@@ -225,7 +208,7 @@ contract Marketplace is ReentrancyGuard {
     nonReentrant 
   {
     Asset storage asset = assets[_id];
-    
+
     require(asset.seller != address(0) && asset.state == State.ForSale, "Asset is not for sale");
     require(asset.seller != msg.sender, "No need to buy your own asset");
     require(asset.price == msg.value, "Invalid amount sent");
@@ -243,4 +226,37 @@ contract Marketplace is ReentrancyGuard {
     soldAssetCount.increment();
     emit AssetSold(_id);
   }
+
+
+
+  /**
+   * Get the assets the sender owns
+   * @return assetsToReturn is the list of assets available
+   */
+  function getMyAssets() 
+    external 
+    view 
+    returns(Asset[] memory assetsToReturn) 
+  {
+    uint256 numOfAllAssets = assetIds.current();
+    uint256 assetsSenderOwns = 0;
+    uint256 currentIndex = 0;
+
+    for (uint256 i = 1; i <= numOfAllAssets; i++) {
+      if (assets[i].owner == msg.sender) {
+        assetsSenderOwns += 1;
+      }
+    }
+
+    assetsToReturn = new Asset[](assetsSenderOwns);
+
+    for (uint256 i = 1; i <= numOfAllAssets; i++) {
+      if (assets[i].owner == msg.sender) {
+        assetsToReturn[currentIndex] = assets[i];
+        currentIndex += 1;
+      }
+    }
+
+    return assetsToReturn;
+   }
 }

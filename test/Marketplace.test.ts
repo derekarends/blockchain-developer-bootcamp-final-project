@@ -132,7 +132,7 @@ describe(`${ContractName}`, () => {
       buyer = signers[1];
     });
 
-    it('should return and empty list', async () => {
+    it('should return an empty list', async () => {
       const items = await marketplace.getListings();
       expect(items).to.be.empty;
     });
@@ -157,6 +157,30 @@ describe(`${ContractName}`, () => {
       const items = await marketplace.getListings();
       expect(items.length).to.be.eq(1);
       expect(BigNumber.from(items[0].id).toNumber()).to.be.eq(2);
+    });
+  });
+
+  describe('getMyAssets', async () => {
+    let buyer: SignerWithAddress;
+    beforeEach(async () => {
+      const signers = await ethers.getSigners();
+      buyer = signers[1];
+    });
+
+    it('should return an empty list', async () => {
+      const items = await marketplace.getMyAssets();
+      expect(items).to.be.empty;
+    });
+
+    it('should return one results because there was one sale', async () => {
+      await createNft(1);
+      await createNft(2);
+
+      await marketplace.connect(buyer).buyAsset(1, { value: auctionPrice });
+
+      const items = await marketplace.connect(buyer).getMyAssets();
+      expect(items.length).to.be.eq(1);
+      expect(BigNumber.from(items[0].id).toNumber()).to.be.eq(1);
     });
   });
 });

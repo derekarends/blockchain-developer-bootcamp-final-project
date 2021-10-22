@@ -9,17 +9,17 @@ import { Marketplace } from '../typechain/Marketplace';
 import NFTContract from '../artifacts/contracts/NFT.sol/NFT.json';
 import MarketplaceContract from '../artifacts/contracts/Marketplace.sol/Marketplace.json';
 import { NftAddress, MarketAddress } from '../utils/EnvVars';
-import { FetchState } from '../components/Enums';
+import { FetchState } from '../components/Types';
 
 function Index() {
   const [listings, setListings] = React.useState<Asset[]>([]);
   const [state, setState] = React.useState<FetchState>(FetchState.loading);
   
   React.useEffect(() => {
-    loadListings()
+    getListings()
   }, []);
 
-  async function loadListings() {
+  async function getListings() {
     const provider = new ethers.providers.JsonRpcProvider();
     const tokenContract = new ethers.Contract(NftAddress, NFTContract.abi, provider) as NFT;
     const marketContract = new ethers.Contract(MarketAddress, MarketplaceContract.abi, provider) as Marketplace;
@@ -37,6 +37,7 @@ function Index() {
         price,
         seller: i.seller,
         image: meta.image,
+        state: i.state
       };
       return item;
     }));

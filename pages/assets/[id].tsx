@@ -3,7 +3,7 @@ import { ethers, BigNumber } from 'ethers';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { Col, Container, Row, Button, Image, ListGroup } from 'react-bootstrap';
-import { Loan, Asset, EthError } from '../../components/Types';
+import { Loan, Asset, EthError, AssetState } from '../../components/Types';
 import Title from '../../components/Title';
 import Routes from '../../utils/Routes';
 import { NFT } from '../../typechain/NFT';
@@ -11,7 +11,7 @@ import { Marketplace } from '../../typechain/Marketplace';
 import NFTContract from '../../artifacts/contracts/NFT.sol/NFT.json';
 import MarketplaceContract from '../../artifacts/contracts/Marketplace.sol/Marketplace.json';
 import { NftAddress, MarketAddress } from '../../utils/EnvVars';
-import { FetchState } from '../../components/Enums';
+import { FetchState } from '../../components/Types';
 import { useAuth } from '../../components/AuthContext';
 import { Status, useSnack } from '../../components/SnackContext';
 
@@ -22,18 +22,16 @@ function AssetDetails() {
   const [state, setState] = React.useState<FetchState>(FetchState.loading);
   const router = useRouter();
   const { id } = router.query;
-  
+
   React.useEffect(() => {
-    loadAsset()
+    loadAsset();
   }, []);
 
   async function loadAsset() {
-    const provider = new ethers.providers.JsonRpcProvider();
-    const tokenContract = new ethers.Contract(NftAddress, NFTContract.abi, provider) as NFT;
-    const marketContract = new ethers.Contract(MarketAddress, MarketplaceContract.abi, provider) as Marketplace;
+    const tokenContract = new ethers.Contract(NftAddress, NFTContract.abi, auth.signer) as NFT;
+    const marketContract = new ethers.Contract(MarketAddress, MarketplaceContract.abi, auth.signer) as Marketplace;
     const a = await marketContract.getAsset(BigNumber.from(id));
 
-    
     const tokenUri = await tokenContract.tokenURI(a.tokenId);
     const meta = JSON.parse(tokenUri);
     const price = ethers.utils.formatUnits(a.price.toString(), 'ether');
@@ -44,6 +42,7 @@ function AssetDetails() {
       price,
       seller: a.seller,
       image: meta.image,
+      state: a.state,
     };
     setAsset(item);
     setState(FetchState.idle);
@@ -52,12 +51,16 @@ function AssetDetails() {
   async function buyAsset() {
     setState(FetchState.buying);
 
-    const marketContract = new ethers.Contract(MarketAddress, MarketplaceContract.abi, auth.signer) as Marketplace;
+    const marketContract = new ethers.Contract(
+      MarketAddress,
+      MarketplaceContract.abi,
+      auth.signer
+    ) as Marketplace;
 
     try {
       const price = ethers.utils.parseUnits(asset.price.toString(), 'ether');
       const transaction = await marketContract.buyAsset(BigNumber.from(id), {
-        value: price
+        value: price,
       });
       await transaction.wait();
       router.push(`${Routes.Dashboard}`);
@@ -69,7 +72,7 @@ function AssetDetails() {
   }
 
   if (state === FetchState.loading) {
-    return <div>Loading...</div>
+    return <div>Loading...</div>;
   }
 
   const loans: Loan[] = [
@@ -110,17 +113,19 @@ function AssetDetails() {
               <div>{asset.price}</div>
             </Col>
           </Row>
-          <Row>
-            <Col>
-              <Button
-                style={{ width: '64px' }}
-                onClick={buyAsset}
-                disabled={state === FetchState.buying}
-              >
-                Buy
-              </Button>
-            </Col>
-          </Row>
+          {asset.state === AssetState.ForSale ? (
+            <Row>
+              <Col>
+                <Button
+                  style={{ width: '64px' }}
+                  onClick={buyAsset}
+                  disabled={state === FetchState.buying}
+                >
+                  Buy
+                </Button>
+              </Col>
+            </Row>
+          ) : null}
         </Col>
       </Row>
       <Row>

@@ -4,7 +4,8 @@ export type Asset = {
   description: string,
   price: string,
   seller: string,
-  image: string
+  image: string,
+  state: AssetState
 }
 
 export type Loan = {
@@ -20,4 +21,16 @@ export type EthError = {
     code: number,
     message: string,
   }
+}
+
+export enum FetchState {
+  loading,
+  idle,
+  buying
+}
+
+export enum AssetState {
+  ForSale,
+  Pending,
+  NotForSale
 }
