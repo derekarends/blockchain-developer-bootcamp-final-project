@@ -67,7 +67,7 @@ function CreateAsset() {
     ) as Marketplace;
     const listingPrice = await marketcontract.getListingPrice();
 
-    transaction = await marketcontract.listAsset(
+    transaction = await marketcontract.listNewAsset(
       NftAddress,
       tokenId,
       price,

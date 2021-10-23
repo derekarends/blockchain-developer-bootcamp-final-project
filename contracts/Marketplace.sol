@@ -161,22 +161,22 @@ contract Marketplace is ReentrancyGuard {
    }
 
    /**
-   * Creates the market item
+   * Creates and lists a new asset
    * Will emit the MarketItemCreated event and required eth
-   * @param nftContract The Address of the nft
-   * @param tokenId The token id
-   * @param price The current price of the nft
+   * @param _nftContract The Address of the nft
+   * @param _tokenId The token id
+   * @param _price The current price of the nft
    */
-  function listAsset(
-    address nftContract, 
-    uint256 tokenId, 
-    uint256 price
+  function listNewAsset(
+    address _nftContract, 
+    uint256 _tokenId, 
+    uint256 _price
   ) 
     external 
     payable 
     nonReentrant 
   {
-    require(price >= minAssetPrice, "Price must be at least the minimum listing price");
+    require(_price >= minAssetPrice, "Price must be at least the minimum listing price");
     require(msg.value == listingPrice, "Must send in listing price");
 
     assetIds.increment();
@@ -184,23 +184,23 @@ contract Marketplace is ReentrancyGuard {
 
     assets[assetId] = Asset(
       assetId,
-      nftContract,
-      tokenId,
-      price,
+      _nftContract,
+      _tokenId,
+      _price,
       State.ForSale,
       payable(msg.sender),
       payable(address(0)),
       payable(address(0))
     );
 
-    IERC721(nftContract).transferFrom(msg.sender, address(this), tokenId);
+    IERC721(_nftContract).transferFrom(msg.sender, address(this), _tokenId);
 
     emit AssetListed(assetId);
   }
 
   /**
-   * Buys a market item
-   * @param _id The Id of an asset
+   * Buys an asset
+   * @param _id The Id of the asset to buy
    */
   function buyAsset(uint256 _id) 
     external 
@@ -209,9 +209,9 @@ contract Marketplace is ReentrancyGuard {
   {
     Asset storage asset = assets[_id];
 
-    require(asset.seller != address(0) && asset.state == State.ForSale, "Asset is not for sale");
-    require(asset.seller != msg.sender, "No need to buy your own asset");
     require(asset.price == msg.value, "Invalid amount sent");
+    require(asset.seller != msg.sender, "No need to buy your own asset");
+    require(asset.seller != address(0) && asset.state == State.ForSale, "Asset is not for sale");
     
     IERC721(asset.nftContract).transferFrom(address(this), msg.sender, asset.tokenId);
     asset.state = State.NotForSale;
@@ -220,14 +220,15 @@ contract Marketplace is ReentrancyGuard {
     (bool sellerGotFunds, ) = asset.seller.call{value: asset.price}("");
     require(sellerGotFunds, "Failed to transfer value to seller");
 
+    // clear seller after sending funds has succeeded
+    asset.seller = payable(address(0));
+
     (bool feeTransfered, ) = owner.call{value: listingPrice}("");
     require(feeTransfered, "Failed to transfer fee");
 
     soldAssetCount.increment();
     emit AssetSold(_id);
   }
-
-
 
   /**
    * Get the assets the sender owns
@@ -259,4 +260,29 @@ contract Marketplace is ReentrancyGuard {
 
     return assetsToReturn;
    }
+
+   /**
+   * Lists and existing asset
+   * @param _id The Id of the asset to list
+   * @param _price The price of the asset
+   */
+  function listExistingAsset(uint256 _id, uint256 _price) 
+    external 
+    payable 
+    nonReentrant 
+  {
+    require(_price >= minAssetPrice, "Price must be at least the minimum listing price");
+    require(msg.value == listingPrice, "Must send in listing price");
+    
+    Asset storage asset = assets[_id];
+    require(asset.owner == msg.sender, "You must own the asset");
+    require(asset.state == State.NotForSale, "Asset is pending or already listed");
+    
+    asset.price = _price;
+    asset.state = State.ForSale;
+    asset.seller = payable(msg.sender);
+    IERC721(asset.nftContract).transferFrom(msg.sender, address(this), asset.tokenId);
+
+    emit AssetListed(asset.id);
+  }
 }
