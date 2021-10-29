@@ -60,14 +60,14 @@ function CreateAsset() {
     const price = ethers.utils.parseUnits(formInput.price, 'ether');
 
     /* then list the item for sale on the marketplace */
-    const marketcontract = new ethers.Contract(
+    const marketContract = new ethers.Contract(
       MarketAddress,
       MarketContract.abi,
       auth.signer
     ) as Marketplace;
-    const listingPrice = await marketcontract.getListingPrice();
+    const listingPrice = await marketContract.getListingPrice();
 
-    transaction = await marketcontract.listNewAsset(
+    transaction = await marketContract.listNewAsset(
       NftAddress,
       tokenId,
       price,

@@ -297,4 +297,18 @@ describe(`${ContractName}`, () => {
       expect(balance).to.be.eq(listingPrice);
     });
   });
+
+  describe('getMyListedAssets', async () => {
+    it('should return an empty list', async () => {
+      const items = await marketplace.getMyListedAssets();
+      expect(items).to.be.empty;
+    });
+
+    it('should return one results because there was one for sale', async () => {
+      await createNft(1);
+
+      const items = await marketplace.getMyListedAssets();
+      expect(items.length).to.be.eq(1);
+    });
+  });
 });

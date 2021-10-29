@@ -18,7 +18,6 @@ contract Marketplace is ReentrancyGuard {
   using Counters for Counters.Counter;
   Counters.Counter private assetIds;
   Counters.Counter private loanIds;
-  Counters.Counter private soldAssetCount;
 
   address payable private owner;
   uint256 private listingPrice = 0.025 ether;
@@ -26,7 +25,6 @@ contract Marketplace is ReentrancyGuard {
   
   mapping(uint256 => Asset) public assets;
   mapping(uint256 => Loan) public loans;
-  mapping(address => mapping(uint256 => Asset)) ownership;
 
   /* 
    * Enums/Structs
@@ -146,8 +144,15 @@ contract Marketplace is ReentrancyGuard {
     returns(Asset[] memory assetsToReturn) 
   {
     uint256 numOfAllAssets = assetIds.current();
-    uint256 numOfUnsoldAssets = numOfAllAssets - soldAssetCount.current();
+    uint256 numOfUnsoldAssets = 0;
     uint256 currentIndex = 0;
+
+    for (uint256 i = 1; i <= numOfAllAssets; i++) {
+      if (assets[i].seller != address(0) && assets[i].state == State.ForSale) {
+        numOfUnsoldAssets += 1;
+      }
+    }
+
     assetsToReturn = new Asset[](numOfUnsoldAssets);
 
     for (uint256 i = 1; i <= numOfAllAssets; i++) {
@@ -189,7 +194,7 @@ contract Marketplace is ReentrancyGuard {
       _price,
       State.ForSale,
       payable(msg.sender),
-      payable(address(0)),
+      payable(msg.sender),
       payable(address(0))
     );
 
@@ -226,7 +231,6 @@ contract Marketplace is ReentrancyGuard {
     (bool feeTransfered, ) = owner.call{value: listingPrice}("");
     require(feeTransfered, "Failed to transfer fee");
 
-    soldAssetCount.increment();
     emit AssetSold(_id);
   }
 
@@ -244,7 +248,7 @@ contract Marketplace is ReentrancyGuard {
     uint256 currentIndex = 0;
 
     for (uint256 i = 1; i <= numOfAllAssets; i++) {
-      if (assets[i].owner == msg.sender) {
+      if (assets[i].owner == msg.sender && assets[i].state != State.ForSale) {
         assetsSenderOwns += 1;
       }
     }
@@ -252,7 +256,7 @@ contract Marketplace is ReentrancyGuard {
     assetsToReturn = new Asset[](assetsSenderOwns);
 
     for (uint256 i = 1; i <= numOfAllAssets; i++) {
-      if (assets[i].owner == msg.sender) {
+      if (assets[i].owner == msg.sender && assets[i].state != State.ForSale) {
         assetsToReturn[currentIndex] = assets[i];
         currentIndex += 1;
       }
@@ -285,4 +289,35 @@ contract Marketplace is ReentrancyGuard {
 
     emit AssetListed(asset.id);
   }
+
+  /**
+   * Get the assets the user is selling
+   * @return assetsToReturn is the list of assets available
+   */
+  function getMyListedAssets() 
+    external 
+    view 
+    returns(Asset[] memory assetsToReturn) 
+  {
+    uint256 numOfAllAssets = assetIds.current();
+    uint256 assetsSenderIsSelling = 0;
+    uint256 currentIndex = 0;
+
+    for (uint256 i = 1; i <= numOfAllAssets; i++) {
+      if (assets[i].owner == msg.sender && assets[i].state == State.ForSale) {
+        assetsSenderIsSelling += 1;
+      }
+    }
+
+    assetsToReturn = new Asset[](assetsSenderIsSelling);
+
+    for (uint256 i = 1; i <= numOfAllAssets; i++) {
+      if (assets[i].owner == msg.sender && assets[i].state == State.ForSale) {
+        assetsToReturn[currentIndex] = assets[i];
+        currentIndex += 1;
+      }
+    }
+
+    return assetsToReturn;
+   }
 }

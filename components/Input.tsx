@@ -4,16 +4,18 @@ import { FormControl, FormGroup, FormLabel } from 'react-bootstrap';
 type Props = {
   id: string,
   label: string,
+  className?: string,
   onInputChange: (e: any) => void
 }
 
 function Input({
   id,
   label,
+  className,
   onInputChange
 }: Props) {
   return (
-    <FormGroup className="mb-3">
+    <FormGroup className={`mb-3 ${className}`}>
       <FormLabel htmlFor={id} className="form-label">
         {label}
       </FormLabel>

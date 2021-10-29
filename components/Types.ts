@@ -26,7 +26,8 @@ export type EthError = {
 export enum FetchState {
   loading,
   idle,
-  buying
+  buying,
+  selling
 }
 
 export enum AssetState {

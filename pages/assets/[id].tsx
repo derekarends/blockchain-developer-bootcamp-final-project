@@ -2,7 +2,17 @@ import * as React from 'react';
 import { ethers, BigNumber } from 'ethers';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { Col, Container, Row, Button, Image, ListGroup } from 'react-bootstrap';
+import {
+  Col,
+  Container,
+  Row,
+  Button,
+  Image,
+  ListGroup,
+  FormGroup,
+  FormLabel,
+  InputGroup,
+} from 'react-bootstrap';
 import { Loan, Asset, EthError, AssetState } from '../../components/Types';
 import Title from '../../components/Title';
 import Routes from '../../utils/Routes';
@@ -20,6 +30,8 @@ function AssetDetails() {
   const snack = useSnack();
   const [asset, setAsset] = React.useState<Asset>();
   const [state, setState] = React.useState<FetchState>(FetchState.loading);
+  const [isSelling, setIsSelling] = React.useState<boolean>(false);
+  const [salePrice, setSalePrice] = React.useState<string>('0');
   const router = useRouter();
   const { id } = router.query;
 
@@ -29,7 +41,11 @@ function AssetDetails() {
 
   async function loadAsset() {
     const tokenContract = new ethers.Contract(NftAddress, NFTContract.abi, auth.signer) as NFT;
-    const marketContract = new ethers.Contract(MarketAddress, MarketplaceContract.abi, auth.signer) as Marketplace;
+    const marketContract = new ethers.Contract(
+      MarketAddress,
+      MarketplaceContract.abi,
+      auth.signer
+    ) as Marketplace;
     const a = await marketContract.getAsset(BigNumber.from(id));
 
     const tokenUri = await tokenContract.tokenURI(a.tokenId);
@@ -63,12 +79,42 @@ function AssetDetails() {
         value: price,
       });
       await transaction.wait();
-      router.push(`${Routes.Dashboard}`);
     } catch (e: unknown) {
       const err = e as EthError;
       snack.display(Status.error, err?.data?.message ?? 'Something went wrong');
       setState(FetchState.idle);
     }
+
+    await loadAsset();
+  }
+
+  async function sellAsset() {
+    setState(FetchState.selling);
+    const tokenContract = new ethers.Contract(NftAddress, NFTContract.abi, auth.signer) as NFT;
+    const marketContract = new ethers.Contract(
+      MarketAddress,
+      MarketplaceContract.abi,
+      auth.signer
+    ) as Marketplace;
+    const listingPrice = await marketContract.getListingPrice();
+
+    const tokenId = BigNumber.from(id);
+    const priceInEth = ethers.utils.parseUnits(salePrice, 'ether');
+
+    try {
+      await tokenContract.approve(marketContract.address, tokenId);
+      const transaction = await marketContract.listExistingAsset(tokenId, priceInEth, {
+        value: listingPrice,
+      });
+      await transaction.wait();
+    } catch (e: unknown) {
+      const err = e as EthError;
+      snack.display(Status.error, err?.data?.message ?? 'Something went wrong');
+      setState(FetchState.idle);
+    }
+
+    await loadAsset();
+    setIsSelling(false);
   }
 
   if (state === FetchState.loading) {
@@ -125,6 +171,64 @@ function AssetDetails() {
                 </Button>
               </Col>
             </Row>
+          ) : asset.state === AssetState.NotForSale ? (
+            <Row>
+              <Col>
+                <Button
+                  style={{ width: '64px' }}
+                  onClick={() => {
+                    setIsSelling(true);
+                  }}
+                  disabled={isSelling}
+                >
+                  Sell
+                </Button>
+              </Col>
+            </Row>
+          ) : null}
+          {isSelling ? (
+            <>
+              <Row className="mt-16">
+                <Col md={6}>
+                  <FormGroup className="mb-3">
+                    <FormLabel htmlFor="assetPrice">Price</FormLabel>
+                    <InputGroup className="input-group has-validation">
+                      <input
+                        id="assetPrice"
+                        className="form-control"
+                        onChange={(e) => setSalePrice(e.target.value)}
+                        required
+                      />
+                      <span className="input-group-text">ETH</span>
+                      <div className="invalid-feedback">Asset Price is required.</div>
+                    </InputGroup>
+                  </FormGroup>
+                </Col>
+              </Row>
+              <Row>
+                <Col>
+                  <Button
+                    style={{ width: '85px', marginRight: '16px' }}
+                    onClick={() => {
+                      sellAsset();
+                    }}
+                    disabled={state === FetchState.selling}
+                  >
+                    Confirm
+                  </Button>
+                  <Button
+                    style={{ width: '75px' }}
+                    onClick={() => {
+                      setIsSelling(false);
+                    }}
+                    disabled={state === FetchState.selling}
+                    variant={'secondary'}
+                  >
+                    Cancel
+                  </Button>
+                </Col>
+              </Row>
+            </>
           ) : null}
         </Col>
       </Row>
