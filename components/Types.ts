@@ -13,9 +13,9 @@ export type Asset = BaseType & {
 
 export type Loan = BaseType & {
   assetId?: number,
-  loanAmount?: number,
-  interest?: number,
-  paymentAmount?: number
+  loanAmount?: string,
+  interest?: string,
+  paymentAmount?: string
   //   uint256 expires;
   //   address payable borrower;
   //   address payable lender;

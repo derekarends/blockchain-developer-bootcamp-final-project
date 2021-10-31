@@ -11,13 +11,14 @@ import { useAuth } from '../../components/AuthContext';
 import { validateForm } from '../../utils/FormValidator';
 import { toBase64 } from '../../utils/File';
 import { Col, Button, InputGroup, FormGroup, Form, FormLabel, FormControl } from 'react-bootstrap';
-import Input from '../../components/Input';
+import { Input } from '../../components/Input';
+import Routes from '../../utils/Routes';
 
 function CreateAsset() {
   const auth = useAuth();
+  const router = useRouter();
   const [fileUrl, setFileUrl] = React.useState(null);
   const [formInput, onFormInputChange] = React.useState<Asset>();
-  const router = useRouter();
 
   async function onFileInputChange(e: any) {
     const file = e.target.files[0];
@@ -29,7 +30,7 @@ function CreateAsset() {
     }
   }
 
-  async function createMarketItem(e: any) {
+  async function save(e: any) {
     e.preventDefault();
     if (!validateForm(e)) {
       return;
@@ -43,13 +44,13 @@ function CreateAsset() {
     });
 
     try {
-      createSale(data);
+      listNewAsset(data);
     } catch (error) {
-      console.log('Error uploading file: ', error);
+      console.log('Error listing asset: ', error);
     }
   }
 
-  async function createSale(url: string) {
+  async function listNewAsset(url: string) {
     const nftContract = new ethers.Contract(NftAddress, NFTContract.abi, auth.signer) as NFT;
     let transaction = await nftContract.createToken(url);
     const tx = await transaction.wait();
@@ -67,19 +68,17 @@ function CreateAsset() {
     ) as Marketplace;
     const listingPrice = await marketContract.getListingPrice();
 
-    transaction = await marketContract.listNewAsset(
-      NftAddress,
-      tokenId,
-      price,
-      { value: listingPrice });
+    transaction = await marketContract.listNewAsset(NftAddress, tokenId, price, {
+      value: listingPrice,
+    });
     await transaction.wait();
-    router.push('/');
+    router.push(`${Routes.Dashboard}`);
   }
 
   return (
     <Col md={{ span: 6, offset: 3 }}>
       <h2>Create an Asset</h2>
-      <Form onSubmit={createMarketItem} className="needs-validation" noValidate>
+      <Form onSubmit={save} className="needs-validation" noValidate>
         <Input
           id="assetName"
           label="Name"
@@ -91,9 +90,7 @@ function CreateAsset() {
           onInputChange={(e) => onFormInputChange({ ...formInput, description: e.target.value })}
         />
         <FormGroup className="mb-3">
-          <FormLabel htmlFor="assetPrice">
-            Price
-          </FormLabel>
+          <FormLabel htmlFor="assetPrice">Price</FormLabel>
           <InputGroup className="input-group has-validation">
             <input
               id="assetPrice"
@@ -106,9 +103,7 @@ function CreateAsset() {
           </InputGroup>
         </FormGroup>
         <FormGroup className="mb-3">
-          <FormLabel htmlFor="assetFile">
-            Asset
-          </FormLabel>
+          <FormLabel htmlFor="assetFile">Asset</FormLabel>
           <FormControl
             id="assetFile"
             type="file"
@@ -120,7 +115,7 @@ function CreateAsset() {
           <div className="invalid-feedback">Asset is required.</div>
           {fileUrl && <img className="rounded mt-4" width="350" src={fileUrl} />}
         </FormGroup>
-        <Button onClick={createMarketItem}>Create Digital Asset</Button>
+        <Button onClick={save}>Create Digital Asset</Button>
       </Form>
     </Col>
   );
