@@ -1,7 +1,7 @@
 export type BaseType = {
   id: number,
-  name: string,
-  description: string
+  name?: string,
+  description?: string
 }
 
 export type Asset = BaseType & {

@@ -245,35 +245,37 @@ function AssetDetails() {
           ) : null}
         </Col>
       </Row>
-      <Row>
-        <Col md={6}>
-          <Title>Available Loans</Title>
-          <ListGroup>
-            {loanState === FetchState.loading ? (
-              <div>Loading...</div>
-            ) : !loans || loans.length === 0 ? (
-              <div>No loans available</div>
-            ) : (
-              loans.map((loan: Loan) => {
-                return (
-                  <ListGroup.Item
-                    key={loan.id}
-                    className="d-flex justify-content-between align-items-start"
-                  >
-                    <div className="ms-2 me-auto">
-                      <div className="fw-bold">{loan.name}</div>
-                      {loan.description}
-                    </div>
-                    <Link href={`${Routes.Loans}/${loan.id}`}>
-                      <Button>Apply</Button>
-                    </Link>
-                  </ListGroup.Item>
-                );
-              })
-            )}
-          </ListGroup>
-        </Col>
-      </Row>
+      {asset.state === AssetState.ForSale ? (
+        <Row>
+          <Col md={6}>
+            <Title>Available Loans</Title>
+            <ListGroup>
+              {loanState === FetchState.loading ? (
+                <div>Loading...</div>
+              ) : !loans || loans.length === 0 ? (
+                <div>No loans available</div>
+              ) : (
+                loans.map((loan: Loan) => {
+                  return (
+                    <ListGroup.Item
+                      key={loan.id}
+                      className="d-flex justify-content-between align-items-start"
+                    >
+                      <div className="ms-2 me-auto">
+                        <div className="fw-bold">{loan.name}</div>
+                        {loan.description}
+                      </div>
+                      <Link href={`${Routes.Loans}/${loan.id}`}>
+                        <Button>Apply</Button>
+                      </Link>
+                    </ListGroup.Item>
+                  );
+                })
+              )}
+            </ListGroup>
+          </Col>
+        </Row>
+      ) : null}
     </Container>
   );
 }
