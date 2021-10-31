@@ -48,12 +48,10 @@ contract Marketplace is ReentrancyGuard {
 
   struct Loan {
     uint256 id;
-    address nftContract;
-    Asset asset;
+    uint256 assetId;
     uint256 loanAmount;
     uint256 interest;
     uint256 paymentAmount;
-    uint256 frequency;
     uint256 expires;
     address payable borrower;
     address payable lender;
@@ -65,6 +63,7 @@ contract Marketplace is ReentrancyGuard {
   event AssetListed(uint256 assetId);
   event AssetPending(uint256 assetId);
   event AssetSold(uint256 assetId);
+  event LoanCreated(uint256 loanId);
   event LoanPayment(uint256 loanId);
 
   /* 
@@ -72,6 +71,11 @@ contract Marketplace is ReentrancyGuard {
    */
   modifier onlyOwner() {
     require(msg.sender == owner, "Only an owner can do this");
+    _;
+  }
+
+  modifier onlyForSale(Asset memory asset) {
+    require(asset.seller != address(0) && asset.state == State.ForSale, "Asset is not for sale");
     _;
   }
 
@@ -167,7 +171,7 @@ contract Marketplace is ReentrancyGuard {
 
    /**
    * Creates and lists a new asset
-   * Will emit the MarketItemCreated event and required eth
+   * Will emit the AssetListed event and required eth
    * @param _nftContract The Address of the nft
    * @param _tokenId The token id
    * @param _price The current price of the nft
@@ -210,13 +214,14 @@ contract Marketplace is ReentrancyGuard {
   function buyAsset(uint256 _id) 
     external 
     payable 
-    nonReentrant 
+    onlyForSale(assets[_id])
+    nonReentrant
   {
     Asset storage asset = assets[_id];
 
     require(asset.price == msg.value, "Invalid amount sent");
     require(asset.seller != msg.sender, "No need to buy your own asset");
-    require(asset.seller != address(0) && asset.state == State.ForSale, "Asset is not for sale");
+    // require(asset.seller != address(0) && asset.state == State.ForSale, "Asset is not for sale");
     
     IERC721(asset.nftContract).transferFrom(address(this), msg.sender, asset.tokenId);
     asset.state = State.NotForSale;
@@ -319,5 +324,106 @@ contract Marketplace is ReentrancyGuard {
     }
 
     return assetsToReturn;
+   }
+
+  /**
+   * Creates an available loan for a given asset
+   * Will emit the LoanCreated event
+   * @param _assetId The asset id
+   * @param _interest The interest owned on loan
+   * @param _paymentAmount The amount to be payed per time
+   */
+  function createNewLoan (
+    uint256 _assetId,
+    uint256 _interest,
+    uint256 _paymentAmount
+  ) 
+    external 
+    payable 
+    onlyForSale(assets[_assetId])
+    nonReentrant
+  {
+    require(msg.value == assets[_assetId].price, "Must send in price of asset");
+
+    loanIds.increment();
+    uint256 loanId = loanIds.current();
+
+    loans[loanId] = Loan(
+      loanId,
+      _assetId,
+      assets[_assetId].price,
+      _interest,
+      _paymentAmount,
+      0,
+      payable(address(0)),
+      payable(msg.sender)
+    );
+
+    emit LoanCreated(loanId);
+  }
+
+  /**
+   * Get the loans the sender owns
+   * @return loansToReturn is the list of loans available
+   */
+  function getMyLendings() 
+    external 
+    view 
+    returns(Loan[] memory loansToReturn) 
+  {
+    uint256 numOfAllLoanss = loanIds.current();
+    uint256 loansSenderOwns = 0;
+    uint256 currentIndex = 0;
+
+    for (uint256 i = 1; i <= numOfAllLoanss; i++) {
+      if (loans[i].lender == msg.sender) {
+        loansSenderOwns += 1;
+      }
+    }
+
+    loansToReturn = new Loan[](loansSenderOwns);
+
+    for (uint256 i = 1; i <= numOfAllLoanss; i++) {
+      if (loans[i].lender == msg.sender) {
+        loansToReturn[currentIndex] = loans[i];
+        currentIndex += 1;
+      }
+    }
+
+    return loansToReturn;
+   }
+
+   /**
+   * Get the loans available for a given asset
+   * @param _assetId The id of the asset
+   * @return loansToReturn is the list of loans available
+   */
+  function getAvailableAssetLoans(
+    uint256 _assetId
+  ) 
+    external 
+    view 
+    returns(Loan[] memory loansToReturn) 
+  {
+    uint256 numOfAllLoanss = loanIds.current();
+    uint256 availLoans = 0;
+    uint256 currentIndex = 0;
+
+    for (uint256 i = 1; i <= numOfAllLoanss; i++) {
+      if (loans[i].assetId == _assetId) {
+        availLoans += 1;
+      }
+    }
+
+    loansToReturn = new Loan[](availLoans);
+
+    for (uint256 i = 1; i <= numOfAllLoanss; i++) {
+      if (loans[i].assetId == _assetId) {
+        loansToReturn[currentIndex] = loans[i];
+        currentIndex += 1;
+      }
+    }
+
+    return loansToReturn;
    }
 }

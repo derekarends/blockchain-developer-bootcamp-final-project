@@ -126,12 +126,14 @@ describe(`${ContractName}`, () => {
     let buyer: SignerWithAddress;
     beforeEach(async () => {
       const signers = await ethers.getSigners();
-      owner = signers[0]
-      seller = signers[1]
+      owner = signers[0];
+      seller = signers[1];
       buyer = signers[2];
 
       await nft.connect(seller).createToken('https://www.mytokenlocation.com');
-      await marketplace.connect(seller).listNewAsset(nft.address, tokenId, auctionPrice, { value: listingPrice });
+      await marketplace
+        .connect(seller)
+        .listNewAsset(nft.address, tokenId, auctionPrice, { value: listingPrice });
     });
 
     it('should require price to be match item price', async () => {
@@ -158,10 +160,22 @@ describe(`${ContractName}`, () => {
       const tx = await marketplace.connect(buyer).buyAsset(tokenId, { value: auctionPrice });
       const negListingPrice = BigNumber.from(listingPrice).mul(-1);
       const negAuctionPrice = BigNumber.from(auctionPrice).mul(-1);
-      expect(tx, 'contract balance should have decreased by listing price').to.changeEtherBalance(marketplace, negListingPrice);
-      expect(tx, 'owner balance should have increased by listing price').to.changeEtherBalance(owner, listingPrice);
-      expect(tx, 'buyer balance should have decreased by auction price').to.changeEtherBalance(buyer, negAuctionPrice);
-      expect(tx, 'seller balance should have increased by seller profit').to.changeEtherBalance(seller, auctionPrice);
+      expect(tx, 'contract balance should have decreased by listing price').to.changeEtherBalance(
+        marketplace,
+        negListingPrice
+      );
+      expect(tx, 'owner balance should have increased by listing price').to.changeEtherBalance(
+        owner,
+        listingPrice
+      );
+      expect(tx, 'buyer balance should have decreased by auction price').to.changeEtherBalance(
+        buyer,
+        negAuctionPrice
+      );
+      expect(tx, 'seller balance should have increased by seller profit').to.changeEtherBalance(
+        seller,
+        auctionPrice
+      );
     });
 
     it('should require asset be listed for sale', async () => {
@@ -284,13 +298,15 @@ describe(`${ContractName}`, () => {
 
     it('should emit a asset was listed', async () => {
       await createNft(1);
-      
+
       const signers = await ethers.getSigners();
       const buyer = signers[1];
       await marketplace.connect(buyer).buyAsset(1, { value: auctionPrice });
 
       await nft.connect(buyer).approve(marketplace.address, 1);
-      const tx = await marketplace.connect(buyer).listExistingAsset(1, oneEth, { value: listingPrice });
+      const tx = await marketplace
+        .connect(buyer)
+        .listExistingAsset(1, oneEth, { value: listingPrice });
       expect(tx).to.emit(marketplace, 'AssetListed');
 
       const balance = await marketplace.provider.getBalance(marketplace.address);
@@ -309,6 +325,72 @@ describe(`${ContractName}`, () => {
 
       const items = await marketplace.getMyListedAssets();
       expect(items.length).to.be.eq(1);
+    });
+  });
+
+  describe('createNewLoan', async () => {
+    it('should require asset being for sale', async () => {
+      await createNft(1);
+      const signers = await ethers.getSigners();
+      await marketplace.connect(signers[1]).buyAsset(1, { value: auctionPrice });
+
+      try {
+        await marketplace.createNewLoan(1, 1, 1, { value: 0 });
+        expect.fail('The transaction should have thrown an error');
+      } catch (ex) {
+        const err = ex as Error;
+        expect(err.message).to.contain('Asset is not for sale');
+      }
+    });
+
+    it('should require full amount of asset to be sent', async () => {
+      await createNft(1);
+
+      try {
+        await marketplace.createNewLoan(1, 1, 1, { value: 0 });
+        expect.fail('The transaction should have thrown an error');
+      } catch (ex) {
+        const err = ex as Error;
+        expect(err.message).to.contain('Must send in price of asset');
+      }
+    });
+
+    it('should emit a loan was created', async () => {
+      await createNft(1);
+
+      const tx = await marketplace.createNewLoan(1, 1, 1, { value: auctionPrice });
+      expect(tx).to.emit(marketplace, 'LoanCreated');
+    });
+  });
+
+  describe('getMyLendings', async () => {
+    it('should return an empty list', async () => {
+      const items = await marketplace.getMyLendings();
+      expect(items).to.be.empty;
+    });
+
+    it('should return one results because there is one loan', async () => {
+      await createNft(1);
+      await marketplace.createNewLoan(1, 1, 1, { value: auctionPrice });
+      const items = await marketplace.getMyLendings();
+      expect(items.length).to.be.eq(1);
+      expect(BigNumber.from(items[0].id).toNumber()).to.be.eq(1);
+    });
+  });
+
+  describe('getAvailableAssetLoans', async () => {
+    it('should return an empty list', async () => {
+      await createNft(1);
+      const items = await marketplace.getAvailableAssetLoans(1);
+      expect(items).to.be.empty;
+    });
+
+    it('should return one results because there is one loan', async () => {
+      await createNft(1);
+      await marketplace.createNewLoan(1, 1, 1, { value: auctionPrice });
+      const items = await marketplace.getAvailableAssetLoans(1);
+      expect(items.length).to.be.eq(1);
+      expect(BigNumber.from(items[0].id).toNumber()).to.be.eq(1);
     });
   });
 });

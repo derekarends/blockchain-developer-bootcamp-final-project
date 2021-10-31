@@ -29,7 +29,9 @@ function AssetDetails() {
   const auth = useAuth();
   const snack = useSnack();
   const [asset, setAsset] = React.useState<Asset>();
+  const [loans, setLoans] = React.useState<Loan[]>([]);
   const [state, setState] = React.useState<FetchState>(FetchState.loading);
+  const [loanState, setLoanState] = React.useState<FetchState>(FetchState.loading);
   const [isSelling, setIsSelling] = React.useState<boolean>(false);
   const [salePrice, setSalePrice] = React.useState<string>('0');
   const router = useRouter();
@@ -37,6 +39,7 @@ function AssetDetails() {
 
   React.useEffect(() => {
     loadAsset();
+    getAvailableLoans();
   }, []);
 
   async function loadAsset() {
@@ -46,19 +49,19 @@ function AssetDetails() {
       MarketplaceContract.abi,
       auth.signer
     ) as Marketplace;
-    const a = await marketContract.getAsset(BigNumber.from(id));
+    const asset = await marketContract.getAsset(BigNumber.from(id));
 
-    const tokenUri = await tokenContract.tokenURI(a.tokenId);
+    const tokenUri = await tokenContract.tokenURI(asset.tokenId);
     const meta = JSON.parse(tokenUri);
-    const price = ethers.utils.formatUnits(a.price.toString(), 'ether');
+    const price = ethers.utils.formatUnits(asset.price.toString(), 'ether');
     const item: Asset = {
-      id: a.tokenId.toNumber(),
+      id: asset.tokenId.toNumber(),
       name: meta.name,
       description: meta.description,
       price,
-      seller: a.seller,
+      seller: asset.seller,
       image: meta.image,
-      state: a.state,
+      state: asset.state,
     };
     setAsset(item);
     setState(FetchState.idle);
@@ -79,6 +82,8 @@ function AssetDetails() {
         value: price,
       });
       await transaction.wait();
+      snack.display(Status.success, `You now own asset "${asset.name}"`);
+      setState(FetchState.idle);
     } catch (e: unknown) {
       const err = e as EthError;
       snack.display(Status.error, err?.data?.message ?? 'Something went wrong');
@@ -117,22 +122,30 @@ function AssetDetails() {
     setIsSelling(false);
   }
 
+  async function getAvailableLoans() {
+    const marketContract = new ethers.Contract(
+      MarketAddress,
+      MarketplaceContract.abi,
+      auth.signer
+    ) as Marketplace;
+    const assetLoans = await marketContract.getAvailableAssetLoans(BigNumber.from(id));
+
+    const items: Loan[] = assetLoans.map((l: any) => {
+      return {
+        id: l.id.toNumber(),
+        name: ethers.utils.formatUnits(l.loanAmount.toString(), 'ether'),
+        assetId: l.assetId.toNumber(),
+        description: `Interest Rate of ${l.interest}`,
+      };
+    });
+
+    setLoans(items);
+    setLoanState(FetchState.idle);
+  }
+
   if (state === FetchState.loading) {
     return <div>Loading...</div>;
   }
-
-  const loans: Loan[] = [
-    {
-      id: 1,
-      name: 'Loan 1',
-      description: 'Desc of loan 1',
-    },
-    {
-      id: 2,
-      name: 'Loan 2',
-      description: 'Desc of loan 2',
-    },
-  ];
 
   return (
     <Container>
@@ -236,22 +249,28 @@ function AssetDetails() {
         <Col md={6}>
           <Title>Available Loans</Title>
           <ListGroup>
-            {loans.map((loan: Loan) => {
-              return (
-                <ListGroup.Item
-                  key={loan.id}
-                  className="d-flex justify-content-between align-items-start"
-                >
-                  <div className="ms-2 me-auto">
-                    <div className="fw-bold">{loan.name}</div>
-                    {loan.description}
-                  </div>
-                  <Link href={`${Routes.Loans}/${loan.id}`}>
-                    <Button>Apply</Button>
-                  </Link>
-                </ListGroup.Item>
-              );
-            })}
+            {loanState === FetchState.loading ? (
+              <div>Loading...</div>
+            ) : !loans || loans.length === 0 ? (
+              <div>No loans available</div>
+            ) : (
+              loans.map((loan: Loan) => {
+                return (
+                  <ListGroup.Item
+                    key={loan.id}
+                    className="d-flex justify-content-between align-items-start"
+                  >
+                    <div className="ms-2 me-auto">
+                      <div className="fw-bold">{loan.name}</div>
+                      {loan.description}
+                    </div>
+                    <Link href={`${Routes.Loans}/${loan.id}`}>
+                      <Button>Apply</Button>
+                    </Link>
+                  </ListGroup.Item>
+                );
+              })
+            )}
           </ListGroup>
         </Col>
       </Row>

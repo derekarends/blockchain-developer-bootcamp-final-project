@@ -1,17 +1,24 @@
-export type Asset = {
+export type BaseType = {
   id: number,
   name: string,
-  description: string,
+  description: string
+}
+
+export type Asset = BaseType & {
   price: string,
   seller: string,
   image: string,
   state: AssetState
 }
 
-export type Loan = {
-  id: number,
-  name: string,
-  description: string
+export type Loan = BaseType & {
+  assetId?: number,
+  loanAmount?: number,
+  interest?: number,
+  paymentAmount?: number
+  //   uint256 expires;
+  //   address payable borrower;
+  //   address payable lender;
 }
 
 export type EthError = {
