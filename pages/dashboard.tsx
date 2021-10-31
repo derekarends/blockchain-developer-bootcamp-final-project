@@ -57,8 +57,17 @@ function Dashboard() {
     return items;
   }
 
-  async function mapResultToLoan(data: any): Promise<Loan[]> {
-    return await Promise.resolve([]);
+  function mapResultToLoan(data: any): Loan[] {
+    const items: Loan[] = data.map((l: any) => {
+      return {
+        id: l.id.toNumber(),
+        name: ethers.utils.formatUnits(l.loanAmount.toString(), 'ether'),
+        assetId: l.assetId.toNumber(),
+        description: `Interest Rate of ${l.interest}`,
+      };
+    });
+
+    return items;
   }
 
   async function getMyAssets() {
@@ -96,7 +105,7 @@ function Dashboard() {
       auth.signer
     ) as Marketplace;
     const data = await marketContract.getMyLendings();
-    const items: Loan[] = await mapResultToLoan(data);
+    const items: Loan[] = mapResultToLoan(data);
     setLendings(items);
     setLendingState(FetchState.idle);
   }
