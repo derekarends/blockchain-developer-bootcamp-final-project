@@ -38,9 +38,12 @@ function AssetDetails() {
   const { id } = router.query;
 
   React.useEffect(() => {
+    if (!id || !auth.signer) {
+      return;
+    }
     loadAsset();
     getAvailableLoans();
-  }, []);
+  }, [id, auth.signer]);
 
   async function loadAsset() {
     const tokenContract = new ethers.Contract(NftAddress, NFTContract.abi, auth.signer) as NFT;
@@ -169,7 +172,7 @@ function AssetDetails() {
           <Row className="mb-16">
             <Col>
               <div className="fw-bold">Price</div>
-              <div>{asset.price}</div>
+              <div>{asset.price} ETH</div>
             </Col>
           </Row>
           {asset.state === AssetState.ForSale ? (
@@ -262,7 +265,7 @@ function AssetDetails() {
                       className="d-flex justify-content-between align-items-start"
                     >
                       <div className="ms-2 me-auto">
-                        <div className="fw-bold">{loan.name}</div>
+                        <div className="fw-bold">{loan.name} ETH</div>
                         {loan.description}
                       </div>
                       <Link href={`${Routes.Loans}/${loan.id}`}>

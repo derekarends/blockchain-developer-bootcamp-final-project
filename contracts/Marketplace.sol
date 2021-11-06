@@ -29,7 +29,7 @@ contract Marketplace is ReentrancyGuard {
   /* 
    * Enums/Structs
    */
-  enum State {
+  enum AssetState {
     ForSale,
     Pending,
     NotForSale
@@ -40,10 +40,16 @@ contract Marketplace is ReentrancyGuard {
     address nftContract;
     uint256 tokenId;
     uint256 price;
-    State state;
+    AssetState state;
     address payable seller;
     address payable owner;
     address payable lender;
+  }
+
+  enum LoanState {
+    New,
+    Pending,
+    Approved
   }
 
   struct Loan {
@@ -53,18 +59,24 @@ contract Marketplace is ReentrancyGuard {
     uint256 interest;
     uint256 paymentAmount;
     uint256 expires;
-    address payable borrower;
+    LoanState state;
     address payable lender;
+    address payable borrower;
   }
 
   /* 
    * Events
    */
   event AssetListed(uint256 assetId);
+  event AssetCancelled(uint256 assetId);
   event AssetPending(uint256 assetId);
   event AssetSold(uint256 assetId);
   event LoanCreated(uint256 loanId);
+  event LoanCancelled(uint256 loanId);
+  event LoanRequest(uint256 loanId);
+  event LoanApproved(uint256 loanId);
   event LoanPayment(uint256 loanId);
+  event LoanDeclined(uint256 loanId);
 
   /* 
    * Modifiers
@@ -75,7 +87,7 @@ contract Marketplace is ReentrancyGuard {
   }
 
   modifier onlyForSale(Asset memory asset) {
-    require(asset.seller != address(0) && asset.state == State.ForSale, "Asset is not for sale");
+    require(asset.seller != address(0) && asset.state == AssetState.ForSale, "Asset is not for sale");
     _;
   }
 
@@ -152,7 +164,7 @@ contract Marketplace is ReentrancyGuard {
     uint256 currentIndex = 0;
 
     for (uint256 i = 1; i <= numOfAllAssets; i++) {
-      if (assets[i].seller != address(0) && assets[i].state == State.ForSale) {
+      if (assets[i].seller != address(0) && assets[i].state == AssetState.ForSale) {
         numOfUnsoldAssets += 1;
       }
     }
@@ -160,7 +172,7 @@ contract Marketplace is ReentrancyGuard {
     assetsToReturn = new Asset[](numOfUnsoldAssets);
 
     for (uint256 i = 1; i <= numOfAllAssets; i++) {
-      if (assets[i].seller != address(0) && assets[i].state == State.ForSale) {
+      if (assets[i].seller != address(0) && assets[i].state == AssetState.ForSale) {
         assetsToReturn[currentIndex] = assets[i];
         currentIndex += 1;
       }
@@ -196,7 +208,7 @@ contract Marketplace is ReentrancyGuard {
       _nftContract,
       _tokenId,
       _price,
-      State.ForSale,
+      AssetState.ForSale,
       payable(msg.sender),
       payable(msg.sender),
       payable(address(0))
@@ -212,7 +224,7 @@ contract Marketplace is ReentrancyGuard {
    * @param _id The Id of the asset to buy
    */
   function buyAsset(uint256 _id) 
-    external 
+    public 
     payable 
     onlyForSale(assets[_id])
     nonReentrant
@@ -224,7 +236,7 @@ contract Marketplace is ReentrancyGuard {
     // require(asset.seller != address(0) && asset.state == State.ForSale, "Asset is not for sale");
     
     IERC721(asset.nftContract).transferFrom(address(this), msg.sender, asset.tokenId);
-    asset.state = State.NotForSale;
+    asset.state = AssetState.NotForSale;
     asset.owner = payable(msg.sender);
 
     (bool sellerGotFunds, ) = asset.seller.call{value: asset.price}("");
@@ -253,7 +265,7 @@ contract Marketplace is ReentrancyGuard {
     uint256 currentIndex = 0;
 
     for (uint256 i = 1; i <= numOfAllAssets; i++) {
-      if (assets[i].owner == msg.sender && assets[i].state != State.ForSale) {
+      if (assets[i].owner == msg.sender && assets[i].state != AssetState.ForSale) {
         assetsSenderOwns += 1;
       }
     }
@@ -261,7 +273,7 @@ contract Marketplace is ReentrancyGuard {
     assetsToReturn = new Asset[](assetsSenderOwns);
 
     for (uint256 i = 1; i <= numOfAllAssets; i++) {
-      if (assets[i].owner == msg.sender && assets[i].state != State.ForSale) {
+      if (assets[i].owner == msg.sender && assets[i].state != AssetState.ForSale) {
         assetsToReturn[currentIndex] = assets[i];
         currentIndex += 1;
       }
@@ -285,15 +297,31 @@ contract Marketplace is ReentrancyGuard {
     
     Asset storage asset = assets[_id];
     require(asset.owner == msg.sender, "You must own the asset");
-    require(asset.state == State.NotForSale, "Asset is pending or already listed");
+    require(asset.state == AssetState.NotForSale, "Asset is pending or already listed");
     
     asset.price = _price;
-    asset.state = State.ForSale;
+    asset.state = AssetState.ForSale;
     asset.seller = payable(msg.sender);
     IERC721(asset.nftContract).transferFrom(msg.sender, address(this), asset.tokenId);
 
     emit AssetListed(asset.id);
   }
+
+  /**
+   * Cancels the asset for sale for a given asset id
+   * @param _assetId the id of the asset
+   */
+   function cancelListingAsset(uint256 _assetId) external onlyForSale(assets[_assetId]) {
+     require(assets[_assetId].seller == msg.sender, "Only seller can cancel listing");
+     
+     Asset storage asset = assets[_assetId];
+     asset.state = AssetState.NotForSale;
+     asset.seller = payable(address(0));
+
+    IERC721(asset.nftContract).transferFrom(address(this), msg.sender, asset.tokenId);
+
+     emit AssetCancelled(_assetId);
+   }
 
   /**
    * Get the assets the user is selling
@@ -309,7 +337,7 @@ contract Marketplace is ReentrancyGuard {
     uint256 currentIndex = 0;
 
     for (uint256 i = 1; i <= numOfAllAssets; i++) {
-      if (assets[i].owner == msg.sender && assets[i].state == State.ForSale) {
+      if (assets[i].owner == msg.sender && assets[i].state == AssetState.ForSale) {
         assetsSenderIsSelling += 1;
       }
     }
@@ -317,7 +345,7 @@ contract Marketplace is ReentrancyGuard {
     assetsToReturn = new Asset[](assetsSenderIsSelling);
 
     for (uint256 i = 1; i <= numOfAllAssets; i++) {
-      if (assets[i].owner == msg.sender && assets[i].state == State.ForSale) {
+      if (assets[i].owner == msg.sender && assets[i].state == AssetState.ForSale) {
         assetsToReturn[currentIndex] = assets[i];
         currentIndex += 1;
       }
@@ -355,12 +383,26 @@ contract Marketplace is ReentrancyGuard {
       _interest,
       _paymentAmount,
       0,
-      payable(address(0)),
-      payable(msg.sender)
+      LoanState.New,
+      payable(msg.sender),
+      payable(address(0))
     );
 
     emit LoanCreated(loanId);
   }
+
+  /**
+   * Cancels the loan for a given loan id
+   * @param _loanId the id of the loan
+   */
+   function cancelLoan(uint256 _loanId) external {
+     require(loans[_loanId].lender == msg.sender, "Only the lender can canel the loan");
+     require(loans[_loanId].borrower == address(0), "Can not cancel an existing loan");
+
+     delete loans[_loanId];
+
+     emit LoanCancelled(_loanId);
+   }
 
   /**
    * Get the loans the sender owns
@@ -371,11 +413,11 @@ contract Marketplace is ReentrancyGuard {
     view 
     returns(Loan[] memory loansToReturn) 
   {
-    uint256 numOfAllLoanss = loanIds.current();
+    uint256 numOfAllLoans = loanIds.current();
     uint256 loansSenderOwns = 0;
     uint256 currentIndex = 0;
 
-    for (uint256 i = 1; i <= numOfAllLoanss; i++) {
+    for (uint256 i = 1; i <= numOfAllLoans; i++) {
       if (loans[i].lender == msg.sender) {
         loansSenderOwns += 1;
       }
@@ -383,7 +425,7 @@ contract Marketplace is ReentrancyGuard {
 
     loansToReturn = new Loan[](loansSenderOwns);
 
-    for (uint256 i = 1; i <= numOfAllLoanss; i++) {
+    for (uint256 i = 1; i <= numOfAllLoans; i++) {
       if (loans[i].lender == msg.sender) {
         loansToReturn[currentIndex] = loans[i];
         currentIndex += 1;
@@ -419,6 +461,80 @@ contract Marketplace is ReentrancyGuard {
 
     for (uint256 i = 1; i <= numOfAllLoanss; i++) {
       if (loans[i].assetId == _assetId) {
+        loansToReturn[currentIndex] = loans[i];
+        currentIndex += 1;
+      }
+    }
+
+    return loansToReturn;
+   }
+
+   /**
+    * Allows a user to apply for a loan for a given asset
+    * @param _loanId the id of the loan
+    */
+   function applyForLoan(uint256 _loanId) external {
+     require(loans[_loanId].state == LoanState.New, "This loan is not available");
+     loans[_loanId].state = LoanState.Pending;
+     loans[_loanId].borrower = payable(msg.sender);
+     emit LoanRequest(_loanId);
+   }
+
+  /**
+   * Approves a pending loan for a given asset
+   * @param _loanId the id of the loan
+   */
+   function approveLoan(uint256 _loanId) external {
+     require(msg.sender == loans[_loanId].lender, "Only lender can approve loan");
+     loans[_loanId].state = LoanState.Approved;
+     emit LoanApproved(_loanId);
+   }
+
+   /**
+   * Decline a pending loan for a given asset
+   * @param _loanId the id of the loan
+   */
+   function declineLoan(uint256 _loanId) external {
+     require(msg.sender == loans[_loanId].lender, "Only lender can decline loan");
+     loans[_loanId].state = LoanState.New;
+     loans[_loanId].borrower = payable(address(0));
+     emit LoanDeclined(_loanId);
+   }
+
+   /**
+   * Buy asset with loan
+   * @param _loanId the id of the loan
+   */
+   function buyAssetWithLoan(uint256 _loanId) external {
+     require(loans[_loanId].borrower == msg.sender, "Only loan borrower can buy asset wit this loan");
+     require(loans[_loanId].state == LoanState.Approved, "Loan needs to be approved");
+     buyAsset(loans[_loanId].assetId);
+     emit LoanApproved(_loanId);
+   }
+
+   /**
+   * Get the loans the sender is borrowing
+   * @return loansToReturn
+   */
+  function getMyLoans() 
+    external 
+    view 
+    returns(Loan[] memory loansToReturn) 
+  {
+    uint256 numOfAllLoans = loanIds.current();
+    uint256 loansSenderBorrowing = 0;
+    uint256 currentIndex = 0;
+
+    for (uint256 i = 1; i <= numOfAllLoans; i++) {
+      if (loans[i].borrower == msg.sender) {
+        loansSenderBorrowing += 1;
+      }
+    }
+
+    loansToReturn = new Loan[](loansSenderBorrowing);
+
+    for (uint256 i = 1; i <= numOfAllLoans; i++) {
+      if (loans[i].borrower == msg.sender) {
         loansToReturn[currentIndex] = loans[i];
         currentIndex += 1;
       }

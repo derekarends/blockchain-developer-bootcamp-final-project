@@ -1,8 +1,8 @@
 import * as React from 'react';
 import Link from 'next/link';
-import { ethers, BigNumber } from 'ethers';
+import { ethers } from 'ethers';
 import { Col, Container, Row, Button, ListGroup } from 'react-bootstrap';
-import { Loan, Asset, EthError } from '../components/Types';
+import { Loan, Asset } from '../components/Types';
 import Title from '../components/Title';
 import Routes from '../utils/Routes';
 import { NFT } from '../typechain/NFT';
@@ -21,22 +21,31 @@ function Dashboard() {
   const [getMyAssetsState, setMyAssetsState] = React.useState<FetchState>(FetchState.loading);
   const [getListedAssetsState, setListedAssetsState] = React.useState<FetchState>(FetchState.loading);
   const [getLendingState, setLendingState] = React.useState<FetchState>(FetchState.loading);
-  const [getLoanSate, setLoanState] = React.useState<FetchState>(FetchState.loading);
+  const [getLoanState, setLoanState] = React.useState<FetchState>(FetchState.loading);
   const [myAssets, setMyAssets] = React.useState<Asset[]>();
   const [listedAssets, setListedAssets] = React.useState<Asset[]>();
   const [myLoans, setLoans] = React.useState<Loan[]>();
   const [myLendings, setLendings] = React.useState<Loan[]>();
 
   React.useEffect(() => {
+    if (!auth.signer) {
+      return;
+    }
     getMyAssets();
     getMyListedAssets();
     getMyLoans();
     getMyLendings();
-  }, []);
+  }, [auth.signer]);
+  
+  const marketContract = new ethers.Contract(
+    MarketAddress,
+    MarketplaceContract.abi,
+    auth.signer
+  ) as Marketplace;
 
   async function mapResultToAsset(data: any): Promise<Asset[]> {
     const items: Asset[] = await Promise.all(
-      data.map(async (i) => {
+      data.map(async (i: any) => {
         const tokenContract = new ethers.Contract(NftAddress, NFTContract.abi, auth.signer) as NFT;
         const tokenUri = await tokenContract.tokenURI(i.tokenId);
         const meta = JSON.parse(tokenUri);
@@ -71,11 +80,6 @@ function Dashboard() {
   }
 
   async function getMyAssets() {
-    const marketContract = new ethers.Contract(
-      MarketAddress,
-      MarketplaceContract.abi,
-      auth.signer
-    ) as Marketplace;
     const data = await marketContract.getMyAssets();
     const items: Asset[] = await mapResultToAsset(data);
     setMyAssets(items);
@@ -83,11 +87,6 @@ function Dashboard() {
   }
 
   async function getMyListedAssets() {
-    const marketContract = new ethers.Contract(
-      MarketAddress,
-      MarketplaceContract.abi,
-      auth.signer
-    ) as Marketplace;
     const data = await marketContract.getMyListedAssets();
     const items: Asset[] = await mapResultToAsset(data);
     setListedAssets(items);
@@ -99,15 +98,23 @@ function Dashboard() {
   }
 
   async function getMyLendings() {
-    const marketContract = new ethers.Contract(
-      MarketAddress,
-      MarketplaceContract.abi,
-      auth.signer
-    ) as Marketplace;
     const data = await marketContract.getMyLendings();
     const items: Loan[] = mapResultToLoan(data);
     setLendings(items);
     setLendingState(FetchState.idle);
+  }
+
+  async function cancelAssetSale(id: number) {
+    await marketContract.cancelListingAsset(id);
+    const filtered = listedAssets.filter((f: Asset) => f.id !== id);
+    setListedAssets(filtered);
+    await getMyAssets();
+  }
+
+  async function cancelLending(id: number) {
+    await marketContract.cancelLoan(id);
+    const filtered = myLendings.filter((f: Loan) => f.id !== id);
+    setLendings(filtered);
   }
 
   return (
@@ -142,6 +149,7 @@ function Dashboard() {
               items={listedAssets}
               route={Routes.Assets}
               loading={getListedAssetsState === FetchState.loading}
+              onCancel={(id) => { cancelAssetSale(id) }}
             />
           </ListGroup>
         </Col>
@@ -153,7 +161,7 @@ function Dashboard() {
             <ListItem
                 items={myLoans}
                 route={Routes.Loans}
-                loading={getListedAssetsState === FetchState.loading}
+                loading={getLoanState === FetchState.loading}
               />
           </ListGroup>
         </Col>
@@ -163,7 +171,8 @@ function Dashboard() {
             <ListItem
                 items={myLendings}
                 route={Routes.Loans}
-                loading={getListedAssetsState === FetchState.loading}
+                loading={getLendingState === FetchState.loading}
+                onCancel={(id) => { cancelLending(id) }}
               />
           </ListGroup>
         </Col>

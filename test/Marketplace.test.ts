@@ -35,6 +35,9 @@ describe(`${ContractName}`, () => {
     expect(nft.address).to.properAddress;
   });
 
+  /**
+   * getListingPrice Tests
+   */
   describe('getListingPrice', async () => {
     it('should return the listing price', async () => {
       listingPrice = await marketplace.getListingPrice();
@@ -61,6 +64,9 @@ describe(`${ContractName}`, () => {
     });
   });
 
+  /**
+   * getMinAssetPrice Tests
+   */
   describe('getMinAssetPrice', async () => {
     it('should return the minimum asset price', async () => {
       const minAssetPrice = await marketplace.getMinAssetPrice();
@@ -87,6 +93,9 @@ describe(`${ContractName}`, () => {
     });
   });
 
+  /**
+   * listNewAsset Tests
+   */
   describe('listNewAsset', async () => {
     it('should require price to be > 0', async () => {
       try {
@@ -119,6 +128,9 @@ describe(`${ContractName}`, () => {
     });
   });
 
+  /**
+   * buyAsset Tests
+   */
   describe('buyAsset', async () => {
     const tokenId = 1;
     let owner: SignerWithAddress;
@@ -195,6 +207,9 @@ describe(`${ContractName}`, () => {
     });
   });
 
+  /**
+   * getListings Tests
+   */
   describe('getListings', async () => {
     let buyer: SignerWithAddress;
     beforeEach(async () => {
@@ -230,6 +245,9 @@ describe(`${ContractName}`, () => {
     });
   });
 
+  /**
+   * getMyAssets Tests
+   */
   describe('getMyAssets', async () => {
     let buyer: SignerWithAddress;
     beforeEach(async () => {
@@ -254,6 +272,9 @@ describe(`${ContractName}`, () => {
     });
   });
 
+  /**
+   * listExistingAsset Tests
+   */
   describe('listExistingAsset', async () => {
     it('should require price to be > 0', async () => {
       try {
@@ -285,16 +306,16 @@ describe(`${ContractName}`, () => {
       }
     });
 
-    // it('should require asset to currently be not for sale', async () => {
-    //   try {
-    //     const signers = await ethers.getSigners();
-    //     await marketplace.connect(signers[1]).listExistingAsset(1, oneEth, { value: listingPrice });
-    //     expect.fail('The transaction should have thrown an error');
-    //   } catch (ex) {
-    //     const err = ex as Error;
-    //     expect(err.message).to.contain('Asset is pending or already listed');
-    //   }
-    // });
+    it('should require asset to currently be not for sale', async () => {
+      await createNft(1);
+      try {
+        await marketplace.listExistingAsset(1, oneEth, { value: listingPrice });
+        expect.fail('The transaction should have thrown an error');
+      } catch (ex) {
+        const err = ex as Error;
+        expect(err.message).to.contain('Asset is pending or already listed');
+      }
+    });
 
     it('should emit a asset was listed', async () => {
       await createNft(1);
@@ -314,6 +335,45 @@ describe(`${ContractName}`, () => {
     });
   });
 
+  /**
+   * cancelListingAsset Tests
+   */
+  describe('cancelListingAsset', async () => {
+    it('should require an asset to be fore sale', async () => {
+      await createNft(1);
+      const signers = await ethers.getSigners();
+      try {
+        await marketplace.connect(signers[1]).buyAsset(1, { value: auctionPrice });
+        await marketplace.connect(signers[1]).cancelListingAsset(1);
+        expect.fail('The transaction should have thrown an error');
+      } catch (ex) {
+        const err = ex as Error;
+        expect(err.message).to.contain('Asset is not for sale');
+      }
+    });
+
+    it('should require only seller to cancel', async () => {
+      await createNft(1);
+      const signers = await ethers.getSigners();
+      try {
+        await marketplace.connect(signers[1]).cancelListingAsset(1);
+        expect.fail('The transaction should have thrown an error');
+      } catch (ex) {
+        const err = ex as Error;
+        expect(err.message).to.contain('Only seller can cancel listing');
+      }
+    });
+
+    it('should emit AssetCancelled', async () => {
+      await createNft(1);
+      const tx = await marketplace.cancelListingAsset(1);
+      expect(tx).to.emit(marketplace, 'AssetCancelled');
+    });
+  });
+
+  /**
+   * getMyListedAssets Tests
+   */
   describe('getMyListedAssets', async () => {
     it('should return an empty list', async () => {
       const items = await marketplace.getMyListedAssets();
@@ -328,6 +388,9 @@ describe(`${ContractName}`, () => {
     });
   });
 
+  /**
+   * createNewLoan Tests
+   */
   describe('createNewLoan', async () => {
     it('should require asset being for sale', async () => {
       await createNft(1);
@@ -363,6 +426,47 @@ describe(`${ContractName}`, () => {
     });
   });
 
+  /**
+   * cancelLoan Tests
+   */
+  describe('cancelLoan', async () => {
+    it('should require only lender to cancel', async () => {
+      await createNft(1);
+      await marketplace.createNewLoan(1, 1, 1, { value: auctionPrice });
+      try {
+        const signers = await ethers.getSigners();
+        await marketplace.connect(signers[1]).cancelLoan(1);
+        expect.fail('The transaction should have thrown an error');
+      } catch (ex) {
+        const err = ex as Error;
+        expect(err.message).to.contain('Only the lender can canel the loan');
+      }
+    });
+
+    // it('should require loan to not have a borrower', async () => {
+    //   await createNft(1);
+    //   await marketplace.createNewLoan(1, 1, 1, { value: auctionPrice });
+    //   try {
+    //     const signers = await ethers.getSigners();
+    //     await marketplace.connect(signers[1]).cancelLoan(1);
+    //     expect.fail('The transaction should have thrown an error');
+    //   } catch (ex) {
+    //     const err = ex as Error;
+    //     expect(err.message).to.contain('Only the lender can canel the loan');
+    //   }
+    // });
+
+    it('should emit a loan was created', async () => {
+      await createNft(1);
+      await marketplace.createNewLoan(1, 1, 1, { value: auctionPrice });
+      const tx = await marketplace.cancelLoan(1);
+      expect(tx).to.emit(marketplace, 'LoanCancelled');
+    });
+  });
+
+  /**
+   * getMyLendings Tests
+   */
   describe('getMyLendings', async () => {
     it('should return an empty list', async () => {
       const items = await marketplace.getMyLendings();
@@ -378,6 +482,9 @@ describe(`${ContractName}`, () => {
     });
   });
 
+  /**
+   * getAvailableAssetLoans Tests
+   */
   describe('getAvailableAssetLoans', async () => {
     it('should return an empty list', async () => {
       await createNft(1);
@@ -393,4 +500,20 @@ describe(`${ContractName}`, () => {
       expect(BigNumber.from(items[0].id).toNumber()).to.be.eq(1);
     });
   });
+
+
+  // describe('getMyLoans', async () => {
+  //   it('should return an empty list', async () => {
+  //     const items = await marketplace.getMyLoans();
+  //     expect(items).to.be.empty;
+  //   });
+
+  //   it('should return one results because there is one loan', async () => {
+  //     await createNft(1);
+  //     await marketplace.createNewLoan(1, 1, 1, { value: auctionPrice });
+  //     const items = await marketplace.getMyLendings();
+  //     expect(items.length).to.be.eq(1);
+  //     expect(BigNumber.from(items[0].id).toNumber()).to.be.eq(1);
+  //   });
+  // });
 });

@@ -34,8 +34,11 @@ function LoanDetails() {
   const { id } = router.query;
 
   React.useEffect(() => {
+    if (!id || !auth.signer) {
+      return;
+    }
     loadLoan();
-  }, []);
+  }, [id, auth.signer]);
 
   async function loadLoan() {
     const marketContract = new ethers.Contract(
@@ -75,19 +78,19 @@ function LoanDetails() {
           <Row className="mb-16">
             <Col>
               <div className="fw-bold">Amount</div>
-              <div>{loan.loanAmount}</div>
+              <div>{loan.loanAmount} ETH</div>
             </Col>
           </Row>
           <Row className="mb-16">
             <Col>
               <div className="fw-bold">Payment</div>
-              <div>{loan.paymentAmount}</div>
+              <div>{loan.paymentAmount} ETH</div>
             </Col>
           </Row>
           <Row className="mb-16">
             <Col>
               <div className="fw-bold">Interest</div>
-              <div>{loan.interest}</div>
+              <div>{loan.interest} ETH</div>
             </Col>
           </Row>
         </Col>
