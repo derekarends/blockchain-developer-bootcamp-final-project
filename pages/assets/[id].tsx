@@ -131,7 +131,7 @@ function AssetDetails() {
       AssetContractJson.abi,
       auth.signer
     ) as AssetContract;
-    const assetLoans = await assetContract.getAvailableAssetLoans(BigNumber.from(id));
+    const assetLoans = []; // await assetContract.getAvailableAssetLoans(BigNumber.from(id));
 
     const items: Loan[] = assetLoans.map((l: any) => {
       return {

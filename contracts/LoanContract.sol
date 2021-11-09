@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "hardhat/console.sol";
+import "./AssetContract.sol";
 
 /**
  * @author Derek Arends
@@ -34,9 +35,6 @@ contract LoanContract is ReentrancyGuard {
     uint256 id;
     uint256 assetId;
     uint256 loanAmount;
-    uint256 interest;
-    uint256 paymentAmount;
-    uint256 expires;
     LoanState state;
     address payable lender;
     address payable borrower;
@@ -49,25 +47,24 @@ contract LoanContract is ReentrancyGuard {
   event LoanCancelled(uint256 loanId);
   event LoanRequest(uint256 loanId);
   event LoanApproved(uint256 loanId);
-  event LoanPayment(uint256 loanId);
   event LoanDeclined(uint256 loanId);
 
-  constructor() {
+  /* 
+   * Modifiers
+   */
+  modifier onlyOwner() {
+    require(msg.sender == owner, "Only an owner can do this");
+    _;
+  }
+
+  constructor(address _assetAddress) {
     owner = payable(msg.sender);
+    assetAddress = _assetAddress;
   }
 
   /**
    * Functions
    */
-
-  /**
-   * Sets the address of the asset market place
-   * @param _address address of asset market
-   */
-  function setAssetAddress(address _address) public {
-    require(msg.sender == owner, "Only the owner can set the asset address");
-    assetAddress = _address;
-  }
 
   /**
    * Get an individual loan based on _id
@@ -79,34 +76,43 @@ contract LoanContract is ReentrancyGuard {
   }
 
   /**
+   * Get all loans
+   * @return loansToReturn is the list of loans available
+   */
+  function getAllLoans() external view returns(Loan[] memory loansToReturn) {
+    uint256 numOfAllLoans = loanIds.current();
+    loansToReturn = new Loan[](numOfAllLoans);
+
+    for (uint256 i = 0; i < numOfAllLoans; i++) {
+        loansToReturn[i] = loans[i + 1];
+    }
+
+    return loansToReturn;
+  }
+
+  /**
    * Creates an available loan for a given asset
    * Will emit the LoanCreated event
    * @param _assetId The asset id
-   * @param _interest The interest owned on loan
-   * @param _paymentAmount The amount to be payed per time
    */
-  function createNewLoan (
-    uint256 _assetId,
-    uint256 _interest,
-    uint256 _paymentAmount
+  function createNewLoan(
+    uint256 _assetId
   ) 
     external 
     payable 
     nonReentrant
   {
-    // Get Asset
-    // Add require asset to be for sale
-    // require(msg.value == assets[_assetId].price, "Must send in price of asset");
+    AssetContract.Asset memory asset = AssetContract(assetAddress).getAsset(_assetId);
+    require(msg.value >= asset.price, "Loan must be at least the amount of the asset");
+    require(asset.state == AssetContract.AssetState.ForSale && asset.seller != address(0), "Asset must be for sale");
+
     loanIds.increment();
     uint256 loanId = loanIds.current();
 
     loans[loanId] = Loan(
       loanId,
       _assetId,
-      0, //assets[_assetId].price,
-      _interest,
-      _paymentAmount,
-      0,
+      msg.value,
       LoanState.New,
       payable(msg.sender),
       payable(address(0))
@@ -127,6 +133,39 @@ contract LoanContract is ReentrancyGuard {
 
      emit LoanCancelled(_loanId);
    }
+
+   /**
+    * Allows a user to apply for a loan for a given asset
+    * @param _loanId the id of the loan
+    */
+   function applyForLoan(uint256 _loanId) external {
+     require(loans[_loanId].state == LoanState.New, "This loan is not available");
+     loans[_loanId].state = LoanState.Pending;
+     loans[_loanId].borrower = payable(msg.sender);
+     emit LoanRequest(_loanId);
+   }
+
+  /**
+   * Approves a pending loan for a given asset
+   * @param _loanId the id of the loan
+   */
+   function approveLoan(uint256 _loanId) external {
+     require(msg.sender == loans[_loanId].lender, "Only lender can approve loan");
+     loans[_loanId].state = LoanState.Approved;
+     emit LoanApproved(_loanId);
+   }
+
+   /**
+   * Decline a pending loan for a given asset
+   * @param _loanId the id of the loan
+   */
+   function declineLoan(uint256 _loanId) external {
+     require(msg.sender == loans[_loanId].lender, "Only lender can decline loan");
+     loans[_loanId].state = LoanState.New;
+     loans[_loanId].borrower = payable(address(0));
+     emit LoanDeclined(_loanId);
+   }
+
 
   /**
    * Get the loans the sender owns
@@ -194,47 +233,15 @@ contract LoanContract is ReentrancyGuard {
   //  }
 
    /**
-    * Allows a user to apply for a loan for a given asset
-    * @param _loanId the id of the loan
-    */
-   function applyForLoan(uint256 _loanId) external {
-     require(loans[_loanId].state == LoanState.New, "This loan is not available");
-     loans[_loanId].state = LoanState.Pending;
-     loans[_loanId].borrower = payable(msg.sender);
-     emit LoanRequest(_loanId);
-   }
-
-  /**
-   * Approves a pending loan for a given asset
-   * @param _loanId the id of the loan
-   */
-   function approveLoan(uint256 _loanId) external {
-     require(msg.sender == loans[_loanId].lender, "Only lender can approve loan");
-     loans[_loanId].state = LoanState.Approved;
-     emit LoanApproved(_loanId);
-   }
-
-   /**
-   * Decline a pending loan for a given asset
-   * @param _loanId the id of the loan
-   */
-   function declineLoan(uint256 _loanId) external {
-     require(msg.sender == loans[_loanId].lender, "Only lender can decline loan");
-     loans[_loanId].state = LoanState.New;
-     loans[_loanId].borrower = payable(address(0));
-     emit LoanDeclined(_loanId);
-   }
-
-   /**
    * Buy asset with loan
    * @param _loanId the id of the loan
    */
-   function buyAssetWithLoan(uint256 _loanId) external {
-     require(loans[_loanId].borrower == msg.sender, "Only loan borrower can buy asset wit this loan");
-     require(loans[_loanId].state == LoanState.Approved, "Loan needs to be approved");
-     // buyAsset(loans[_loanId].assetId);
-     emit LoanApproved(_loanId);
-   }
+  //  function buyAssetWithLoan(uint256 _loanId) external {
+  //    require(loans[_loanId].borrower == msg.sender, "Only loan borrower can buy asset wit this loan");
+  //    require(loans[_loanId].state == LoanState.Approved, "Loan needs to be approved");
+  //    // buyAsset(loans[_loanId].assetId);
+  //    emit LoanApproved(_loanId);
+  //  }
 
    /**
    * Get the loans the sender is borrowing

@@ -13,3 +13,9 @@
 * Take over asset if loan expired
 * When applying for loan/creating loan bring in asset information
 * upload images to ipfs
+
+## To Deploy
+
+* yarn dev
+* npx hardhat node
+* npx hardhat run scripts/deploy.js --network localhost

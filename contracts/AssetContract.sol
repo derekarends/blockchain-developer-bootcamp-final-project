@@ -19,8 +19,7 @@ contract AssetContract is ReentrancyGuard {
   Counters.Counter private assetIds;
 
   address payable private owner;
-  address private loanAddress;
-  uint256 public listingPrice = 0.025 ether;
+  uint256 public listingFee = 0.025 ether;
   uint256 public minAssetPrice = 0.5 ether;
   mapping(uint256 => Asset) public assets;
 
@@ -77,19 +76,10 @@ contract AssetContract is ReentrancyGuard {
    */
 
   /**
-   * Sets the address of the loan market place
-   * @param _address address of loan market
-   */
-  function setLoanAddress(address _address) public {
-    require(msg.sender == owner, "Only the owner can set the loan address");
-    loanAddress = _address;
-  }
-
-   /**
    * Set listing price
    */
-  function setListingPrice(uint256 _newPrice) public onlyOwner {
-    listingPrice = _newPrice * (1 ether);
+  function setListingFee(uint256 _newPrice) public onlyOwner {
+    listingFee = _newPrice * (1 ether);
   }
 
   /**
@@ -112,32 +102,20 @@ contract AssetContract is ReentrancyGuard {
    * Get all assets
    * @return assetsToReturn is the list of assets available
    */
-  // function getListings() 
-  //   external 
-  //   view 
-  //   returns(Asset[] memory assetsToReturn) 
-  // {
-  //   uint256 numOfAllAssets = assetIds.current();
-  //   uint256 numOfUnsoldAssets = 0;
-  //   uint256 currentIndex = 0;
+  function getAllAssets() 
+    external 
+    view 
+    returns(Asset[] memory assetsToReturn) 
+  {
+    uint256 numOfAllAssets = assetIds.current();
+    assetsToReturn = new Asset[](numOfAllAssets);
+    
+    for (uint256 i = 0; i < numOfAllAssets; i++) {
+      assetsToReturn[i] = assets[i + 1];
+    }
 
-  //   for (uint256 i = 1; i <= numOfAllAssets; i++) {
-  //     if (assets[i].seller != address(0) && assets[i].state == AssetState.ForSale) {
-  //       numOfUnsoldAssets += 1;
-  //     }
-  //   }
-
-  //   assetsToReturn = new Asset[](numOfUnsoldAssets);
-
-  //   for (uint256 i = 1; i <= numOfAllAssets; i++) {
-  //     if (assets[i].seller != address(0) && assets[i].state == AssetState.ForSale) {
-  //       assetsToReturn[currentIndex] = assets[i];
-  //       currentIndex += 1;
-  //     }
-  //   }
-
-  //   return assetsToReturn;
-  //  }
+    return assetsToReturn;
+  }
 
    /**
    * Creates and lists a new asset
@@ -155,8 +133,8 @@ contract AssetContract is ReentrancyGuard {
     payable 
     nonReentrant 
   {
-    require(_price >= minAssetPrice, "Price must be at least the minimum listing price");
-    require(msg.value == listingPrice, "Must send in listing price");
+    require(_price >= minAssetPrice, "Price must be at least the minimum asset price");
+    require(msg.value == listingFee, "Must send in listing fee");
 
     assetIds.increment();
     uint256 assetId = assetIds.current();
@@ -191,7 +169,7 @@ contract AssetContract is ReentrancyGuard {
 
     require(asset.price == msg.value, "Invalid amount sent");
     require(asset.seller != msg.sender, "No need to buy your own asset");
-    // require(asset.seller != address(0) && asset.state == State.ForSale, "Asset is not for sale");
+    require(asset.seller != address(0) && asset.state == AssetState.ForSale, "Asset is not for sale");
     
     IERC721(asset.nftContract).transferFrom(address(this), msg.sender, asset.tokenId);
     asset.state = AssetState.NotForSale;
@@ -203,12 +181,84 @@ contract AssetContract is ReentrancyGuard {
     // clear seller after sending funds has succeeded
     asset.seller = payable(address(0));
 
-    (bool feeTransfered, ) = owner.call{value: listingPrice}("");
+    (bool feeTransfered, ) = owner.call{value: listingFee}("");
     require(feeTransfered, "Failed to transfer fee");
 
     emit AssetSold(_id);
   }
 
+   /**
+   * Lists and existing asset
+   * @param _id The Id of the asset to list
+   * @param _price The price of the asset
+   */
+  function listExistingAsset(uint256 _id, uint256 _price) 
+    external 
+    payable 
+    nonReentrant 
+  {
+    require(_price >= minAssetPrice, "Price must be at least the minimum asset price");
+    require(msg.value == listingFee, "Must send in listing fee");
+    
+    Asset storage asset = assets[_id];
+    require(asset.owner == msg.sender, "You must own the asset");
+    require(asset.state == AssetState.NotForSale, "Asset is pending or already listed");
+    
+    asset.price = _price;
+    asset.state = AssetState.ForSale;
+    asset.seller = payable(msg.sender);
+    IERC721(asset.nftContract).transferFrom(msg.sender, address(this), asset.tokenId);
+
+    emit AssetListed(asset.id);
+  }
+
+  /**
+   * Cancels the asset for sale for a given asset id
+   * @param _assetId the id of the asset
+   */
+   function cancelListingAsset(uint256 _assetId) external onlyForSale(assets[_assetId]) {
+     require(assets[_assetId].seller == msg.sender, "Only seller can cancel listing");
+     
+     Asset storage asset = assets[_assetId];
+     asset.state = AssetState.NotForSale;
+     asset.seller = payable(address(0));
+
+    IERC721(asset.nftContract).transferFrom(address(this), msg.sender, asset.tokenId);
+
+     emit AssetCancelled(_assetId);
+   }
+
+   /**
+   * Get all assets
+   * @return assetsToReturn is the list of assets available
+   */
+  // function getListings() 
+  //   external 
+  //   view 
+  //   returns(Asset[] memory assetsToReturn) 
+  // {
+  //   uint256 numOfAllAssets = assetIds.current();
+  //   uint256 numOfUnsoldAssets = 0;
+  //   uint256 currentIndex = 0;
+
+  //   for (uint256 i = 1; i <= numOfAllAssets; i++) {
+  //     if (assets[i].seller != address(0) && assets[i].state == AssetState.ForSale) {
+  //       numOfUnsoldAssets += 1;
+  //     }
+  //   }
+
+  //   assetsToReturn = new Asset[](numOfUnsoldAssets);
+
+  //   for (uint256 i = 1; i <= numOfAllAssets; i++) {
+  //     if (assets[i].seller != address(0) && assets[i].state == AssetState.ForSale) {
+  //       assetsToReturn[currentIndex] = assets[i];
+  //       currentIndex += 1;
+  //     }
+  //   }
+
+  //   return assetsToReturn;
+  //  }
+  
   /**
    * Get the assets the sender owns
    * @return assetsToReturn is the list of assets available
@@ -239,47 +289,6 @@ contract AssetContract is ReentrancyGuard {
 
   //   return assetsToReturn;
   //  }
-
-   /**
-   * Lists and existing asset
-   * @param _id The Id of the asset to list
-   * @param _price The price of the asset
-   */
-  function listExistingAsset(uint256 _id, uint256 _price) 
-    external 
-    payable 
-    nonReentrant 
-  {
-    require(_price >= minAssetPrice, "Price must be at least the minimum listing price");
-    require(msg.value == listingPrice, "Must send in listing price");
-    
-    Asset storage asset = assets[_id];
-    require(asset.owner == msg.sender, "You must own the asset");
-    require(asset.state == AssetState.NotForSale, "Asset is pending or already listed");
-    
-    asset.price = _price;
-    asset.state = AssetState.ForSale;
-    asset.seller = payable(msg.sender);
-    IERC721(asset.nftContract).transferFrom(msg.sender, address(this), asset.tokenId);
-
-    emit AssetListed(asset.id);
-  }
-
-  /**
-   * Cancels the asset for sale for a given asset id
-   * @param _assetId the id of the asset
-   */
-   function cancelListingAsset(uint256 _assetId) external onlyForSale(assets[_assetId]) {
-     require(assets[_assetId].seller == msg.sender, "Only seller can cancel listing");
-     
-     Asset storage asset = assets[_assetId];
-     asset.state = AssetState.NotForSale;
-     asset.seller = payable(address(0));
-
-    IERC721(asset.nftContract).transferFrom(address(this), msg.sender, asset.tokenId);
-
-     emit AssetCancelled(_assetId);
-   }
 
   /**
    * Get the assets the user is selling

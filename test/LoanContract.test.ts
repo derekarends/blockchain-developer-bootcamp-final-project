@@ -18,23 +18,23 @@ describe(`${ContractName}`, () => {
   let loanContract: LoanContract;
   let assetContract: AssetContract;
   let nft: NFT;
-  let listingPrice: BigNumber;
 
   async function createNft(id: number) {
+    const listingFee = await assetContract.listingFee();
     await nft.createToken(`https://www.mytokenlocation${id}.com`);
-    await assetContract.listNewAsset(nft.address, id, auctionPrice, { value: listingPrice });
+    await assetContract.listNewAsset(nft.address, id, auctionPrice, { value: listingFee });
   }
 
   beforeEach(async () => {
-    const nftLoanFactory = await ethers.getContractFactory(`${ContractName}`);
-    loanContract = (await nftLoanFactory.deploy()) as LoanContract;
-    await loanContract.deployed();
-    expect(loanContract.address).to.properAddress;
-
     const assetContractFactory = await ethers.getContractFactory(`AssetContract`);
     assetContract = (await assetContractFactory.deploy()) as AssetContract;
     await assetContract.deployed();
     expect(assetContract.address).to.properAddress;
+
+    const nftLoanFactory = await ethers.getContractFactory(`${ContractName}`);
+    loanContract = (await nftLoanFactory.deploy(assetContract.address)) as LoanContract;
+    await loanContract.deployed();
+    expect(loanContract.address).to.properAddress;
 
     const nftFactory = await ethers.getContractFactory('NFT');
     nft = (await nftFactory.deploy(assetContract.address)) as NFT;
@@ -46,17 +46,18 @@ describe(`${ContractName}`, () => {
    * createNewLoan Tests
    */
   describe('createNewLoan', async () => {
+    const tokenId = 1;
     it('should require asset being for sale', async () => {
-      await createNft(1);
+      await createNft(tokenId);
       const signers = await ethers.getSigners();
-      await assetContract.connect(signers[1]).buyAsset(1, { value: auctionPrice });
+      await assetContract.connect(signers[1]).buyAsset(tokenId, { value: auctionPrice });
 
       try {
-        await loanContract.createNewLoan(1, 1, 1, { value: 0 });
+        await loanContract.createNewLoan(1, { value: auctionPrice });
         expect.fail('The transaction should have thrown an error');
       } catch (ex) {
         const err = ex as Error;
-        expect(err.message).to.contain('Asset is not for sale');
+        expect(err.message).to.contain('Asset must be for sale');
       }
     });
 
@@ -64,19 +65,42 @@ describe(`${ContractName}`, () => {
       await createNft(1);
 
       try {
-        await loanContract.createNewLoan(1, 1, 1, { value: 0 });
+        await loanContract.createNewLoan(tokenId, { value: 0 });
         expect.fail('The transaction should have thrown an error');
       } catch (ex) {
         const err = ex as Error;
-        expect(err.message).to.contain('Must send in price of asset');
+        expect(err.message).to.contain('Loan must be at least the amount of the asset');
       }
     });
 
     it('should emit a loan was created', async () => {
-      await createNft(1);
+      await createNft(tokenId);
 
-      const tx = await loanContract.createNewLoan(1, 1, 1, { value: auctionPrice });
+      const tx = await loanContract.createNewLoan(tokenId, { value: auctionPrice });
       expect(tx).to.emit(loanContract, 'LoanCreated');
+    });
+  });
+
+  /**
+   * getAllLoans Tests
+   */
+  describe('getAllLoans', async () => {
+    it('should return an empty list', async () => {
+      const items = await loanContract.getAllLoans();
+      expect(items).to.be.empty;
+    });
+
+    it('should return two results', async () => {
+      const tokenId = 1;
+      await createNft(tokenId);
+      await loanContract.createNewLoan(tokenId, { value: auctionPrice });
+      await loanContract.createNewLoan(tokenId, { value: auctionPrice });
+
+      const items = await loanContract.getAllLoans();
+      expect(items.length).to.be.eq(2);
+      for (let i = 0; i < items.length; i++) {
+        expect(BigNumber.from(items[i].id).toNumber()).to.be.eq(i + 1);
+      }
     });
   });
 
@@ -86,7 +110,7 @@ describe(`${ContractName}`, () => {
   describe('cancelLoan', async () => {
     it('should require only lender to cancel', async () => {
       await createNft(1);
-      await loanContract.createNewLoan(1, 1, 1, { value: auctionPrice });
+      await loanContract.createNewLoan(1, { value: auctionPrice });
       try {
         const signers = await ethers.getSigners();
         await loanContract.connect(signers[1]).cancelLoan(1);
@@ -112,7 +136,7 @@ describe(`${ContractName}`, () => {
 
     it('should emit a loan was created', async () => {
       await createNft(1);
-      await loanContract.createNewLoan(1, 1, 1, { value: auctionPrice });
+      await loanContract.createNewLoan(1, { value: auctionPrice });
       const tx = await loanContract.cancelLoan(1);
       expect(tx).to.emit(loanContract, 'LoanCancelled');
     });
@@ -170,7 +194,6 @@ describe(`${ContractName}`, () => {
   //     expect(BigNumber.from(items[0].id).toNumber()).to.be.eq(1);
   //   });
   // });
-
 
   // describe('getMyLoans', async () => {
   //   it('should return an empty list', async () => {

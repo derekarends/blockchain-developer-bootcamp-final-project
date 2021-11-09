@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 /**
  * @author Derek Arends
  * @title A simple contract to mint NFTs
- * @dev This will create a contract specific to the maketplace
+ * @dev This will create a contract specific to the asset contract
  * and create a token to associate the uri with the sender
  */
 contract NFT is ERC721URIStorage {
@@ -17,10 +17,10 @@ contract NFT is ERC721URIStorage {
   address private contractAddress;
 
   /**
-   * @param marketPlaceAddress is the as address of the market place of this NFT Token
+   * @param assetAddress is the as address of the asset contract for this NFT Token
    */
-  constructor(address marketPlaceAddress) ERC721("Ownership Tokens", "OT") {
-    contractAddress = marketPlaceAddress;
+  constructor(address assetAddress) ERC721("Ownership Tokens", "OT") {
+    contractAddress = assetAddress;
   }
 
   /**

@@ -23,26 +23,27 @@ function Index() {
     const provider = new ethers.providers.JsonRpcProvider();
     const tokenContract = new ethers.Contract(NftAddress, NFTContract.abi, provider) as NFT;
     const assetContract = new ethers.Contract(AssetContractAddress, AssetContractJson.abi, provider) as AssetContract;
-    const data = await assetContract.getListings();
+    const data = await assetContract.getAllAssets();
+    console.log(data);
 
-    const items: Asset[] = await Promise.all(data.map(async i => {
-      console.log(i.tokenId);
-      const tokenUri = await tokenContract.tokenURI(i.tokenId);
-      const meta = JSON.parse(tokenUri);
-      const price = ethers.utils.formatUnits(i.price.toString(), 'ether');
-      const item: Asset = {
-        id: i.tokenId.toNumber(),
-        name: meta.name,
-        description: meta.description,
-        price,
-        seller: i.seller,
-        image: meta.image,
-        state: i.state
-      };
-      return item;
-    }));
-    setListings(items);
-    setState(FetchState.idle);
+    // const items: Asset[] = await Promise.all(data.map(async i => {
+    //   console.log(i.tokenId);
+    //   const tokenUri = await tokenContract.tokenURI(i.tokenId);
+    //   const meta = JSON.parse(tokenUri);
+    //   const price = ethers.utils.formatUnits(i.price.toString(), 'ether');
+    //   const item: Asset = {
+    //     id: i.tokenId.toNumber(),
+    //     name: meta.name,
+    //     description: meta.description,
+    //     price,
+    //     seller: i.seller,
+    //     image: meta.image,
+    //     state: i.state
+    //   };
+    //   return item;
+    // }));
+    // setListings(items);
+    // setState(FetchState.idle);
   }
 
   if (state === FetchState.loading) {
