@@ -2,10 +2,10 @@ import * as React from 'react';
 import { ethers } from 'ethers';
 import { useRouter } from 'next/router';
 import { NFT } from '../../typechain/NFT';
-import { Marketplace } from '../../typechain/Marketplace';
-import { NftAddress, MarketAddress } from '../../utils/EnvVars';
+import { AssetContract } from '../../typechain/AssetContract';
+import { NftAddress, AssetContractAddress } from '../../utils/EnvVars';
 import NFTContract from '../../artifacts/contracts/NFT.sol/NFT.json';
-import MarketContract from '../../artifacts/contracts/Marketplace.sol/Marketplace.json';
+import AssetContractJson from '../../artifacts/contracts/AssetContract.sol/AssetContract.json';
 import { Asset } from '../../components/Types';
 import { useAuth } from '../../components/AuthContext';
 import { validateForm } from '../../utils/FormValidator';
@@ -61,14 +61,14 @@ function CreateAsset() {
     const price = ethers.utils.parseUnits(formInput.price, 'ether');
 
     /* then list the item for sale on the marketplace */
-    const marketContract = new ethers.Contract(
-      MarketAddress,
-      MarketContract.abi,
+    const assetContract = new ethers.Contract(
+      AssetContractAddress,
+      AssetContractJson.abi,
       auth.signer
-    ) as Marketplace;
-    const listingPrice = await marketContract.getListingPrice();
+    ) as AssetContract;
+    const listingPrice = await assetContract.listingPrice();
 
-    transaction = await marketContract.listNewAsset(NftAddress, tokenId, price, {
+    transaction = await assetContract.listNewAsset(NftAddress, tokenId, price, {
       value: listingPrice,
     });
     await transaction.wait();

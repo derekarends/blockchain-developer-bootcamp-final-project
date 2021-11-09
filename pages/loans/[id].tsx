@@ -1,26 +1,17 @@
 import * as React from 'react';
 import { ethers, BigNumber } from 'ethers';
 import { useRouter } from 'next/router';
-import Link from 'next/link';
 import {
   Col,
   Container,
   Row,
-  Button,
-  Image,
-  ListGroup,
-  FormGroup,
-  FormLabel,
-  InputGroup,
 } from 'react-bootstrap';
-import { Loan, Asset, EthError, AssetState } from '../../components/Types';
-import Title from '../../components/Title';
-import Routes from '../../utils/Routes';
-import { NFT } from '../../typechain/NFT';
-import { Marketplace } from '../../typechain/Marketplace';
-import NFTContract from '../../artifacts/contracts/NFT.sol/NFT.json';
-import MarketplaceContract from '../../artifacts/contracts/Marketplace.sol/Marketplace.json';
-import { NftAddress, MarketAddress } from '../../utils/EnvVars';
+import { Loan } from '../../components/Types';
+import { AssetContract } from '../../typechain/AssetContract';
+import AssetContractJson from '../../artifacts/contracts/AssetContract.sol/AssetContract.json';
+import { LoanContract } from '../../typechain/LoanContract';
+import LoanContractJson from '../../artifacts/contracts/LoanContract.sol/LoanContract.json';
+import { AssetContractAddress, LoanContractAddress } from '../../utils/EnvVars';
 import { FetchState } from '../../components/Types';
 import { useAuth } from '../../components/AuthContext';
 import { Status, useSnack } from '../../components/SnackContext';
@@ -41,12 +32,12 @@ function LoanDetails() {
   }, [id, auth.signer]);
 
   async function loadLoan() {
-    const marketContract = new ethers.Contract(
-      MarketAddress,
-      MarketplaceContract.abi,
+    const loanContract = new ethers.Contract(
+      LoanContractAddress,
+      LoanContractJson.abi,
       auth.signer
-    ) as Marketplace;
-    const loan = await marketContract.getLoan(BigNumber.from(id));
+    ) as LoanContract;
+    const loan = await loanContract.getLoan(BigNumber.from(id));
     const loanAmount = ethers.utils.formatUnits(loan.loanAmount.toString(), 'ether');
     const interest = ethers.utils.formatUnits(loan.interest.toString(), 'ether');
     const payments = ethers.utils.formatUnits(loan.paymentAmount.toString(), 'ether');

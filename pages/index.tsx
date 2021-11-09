@@ -5,10 +5,10 @@ import { Col, Container, Row, Button, Card } from 'react-bootstrap';
 import { Asset } from '../components/Types';
 import Routes from '../utils/Routes';
 import { NFT } from '../typechain/NFT';
-import { Marketplace } from '../typechain/Marketplace';
+import { AssetContract } from '../typechain/AssetContract';
 import NFTContract from '../artifacts/contracts/NFT.sol/NFT.json';
-import MarketplaceContract from '../artifacts/contracts/Marketplace.sol/Marketplace.json';
-import { NftAddress, MarketAddress } from '../utils/EnvVars';
+import AssetContractJson from '../artifacts/contracts/AssetContract.sol/AssetContract.json';
+import { NftAddress, AssetContractAddress } from '../utils/EnvVars';
 import { FetchState } from '../components/Types';
 
 function Index() {
@@ -22,8 +22,8 @@ function Index() {
   async function getListings() {
     const provider = new ethers.providers.JsonRpcProvider();
     const tokenContract = new ethers.Contract(NftAddress, NFTContract.abi, provider) as NFT;
-    const marketContract = new ethers.Contract(MarketAddress, MarketplaceContract.abi, provider) as Marketplace;
-    const data = await marketContract.getListings();
+    const assetContract = new ethers.Contract(AssetContractAddress, AssetContractJson.abi, provider) as AssetContract;
+    const data = await assetContract.getListings();
 
     const items: Asset[] = await Promise.all(data.map(async i => {
       console.log(i.tokenId);

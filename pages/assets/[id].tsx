@@ -17,10 +17,10 @@ import { Loan, Asset, EthError, AssetState } from '../../components/Types';
 import Title from '../../components/Title';
 import Routes from '../../utils/Routes';
 import { NFT } from '../../typechain/NFT';
-import { Marketplace } from '../../typechain/Marketplace';
+import { AssetContract } from '../../typechain/AssetContract';
 import NFTContract from '../../artifacts/contracts/NFT.sol/NFT.json';
-import MarketplaceContract from '../../artifacts/contracts/Marketplace.sol/Marketplace.json';
-import { NftAddress, MarketAddress } from '../../utils/EnvVars';
+import AssetContractJson from '../../artifacts/contracts/AssetContract.sol/AssetContract.json';
+import { NftAddress, AssetContractAddress } from '../../utils/EnvVars';
 import { FetchState } from '../../components/Types';
 import { useAuth } from '../../components/AuthContext';
 import { Status, useSnack } from '../../components/SnackContext';
@@ -47,12 +47,12 @@ function AssetDetails() {
 
   async function loadAsset() {
     const tokenContract = new ethers.Contract(NftAddress, NFTContract.abi, auth.signer) as NFT;
-    const marketContract = new ethers.Contract(
-      MarketAddress,
-      MarketplaceContract.abi,
+    const assetContract = new ethers.Contract(
+      AssetContractAddress,
+      AssetContractJson.abi,
       auth.signer
-    ) as Marketplace;
-    const asset = await marketContract.getAsset(BigNumber.from(id));
+    ) as AssetContract;
+    const asset = await assetContract.getAsset(BigNumber.from(id));
 
     const tokenUri = await tokenContract.tokenURI(asset.tokenId);
     const meta = JSON.parse(tokenUri);
@@ -73,15 +73,15 @@ function AssetDetails() {
   async function buyAsset() {
     setState(FetchState.buying);
 
-    const marketContract = new ethers.Contract(
-      MarketAddress,
-      MarketplaceContract.abi,
+    const assetContract = new ethers.Contract(
+      AssetContractAddress,
+      AssetContractJson.abi,
       auth.signer
-    ) as Marketplace;
+    ) as AssetContract;
 
     try {
       const price = ethers.utils.parseUnits(asset.price.toString(), 'ether');
-      const transaction = await marketContract.buyAsset(BigNumber.from(id), {
+      const transaction = await assetContract.buyAsset(BigNumber.from(id), {
         value: price,
       });
       await transaction.wait();
@@ -99,19 +99,19 @@ function AssetDetails() {
   async function sellAsset() {
     setState(FetchState.selling);
     const tokenContract = new ethers.Contract(NftAddress, NFTContract.abi, auth.signer) as NFT;
-    const marketContract = new ethers.Contract(
-      MarketAddress,
-      MarketplaceContract.abi,
+    const assetContract = new ethers.Contract(
+      AssetContractAddress,
+      AssetContractJson.abi,
       auth.signer
-    ) as Marketplace;
-    const listingPrice = await marketContract.getListingPrice();
+    ) as AssetContract;
+    const listingPrice = await assetContract.listingPrice();
 
     const tokenId = BigNumber.from(id);
     const priceInEth = ethers.utils.parseUnits(salePrice, 'ether');
 
     try {
-      await tokenContract.approve(marketContract.address, tokenId);
-      const transaction = await marketContract.listExistingAsset(tokenId, priceInEth, {
+      await tokenContract.approve(assetContract.address, tokenId);
+      const transaction = await assetContract.listExistingAsset(tokenId, priceInEth, {
         value: listingPrice,
       });
       await transaction.wait();
@@ -126,12 +126,12 @@ function AssetDetails() {
   }
 
   async function getAvailableLoans() {
-    const marketContract = new ethers.Contract(
-      MarketAddress,
-      MarketplaceContract.abi,
+    const assetContract = new ethers.Contract(
+      AssetContractAddress,
+      AssetContractJson.abi,
       auth.signer
-    ) as Marketplace;
-    const assetLoans = await marketContract.getAvailableAssetLoans(BigNumber.from(id));
+    ) as AssetContract;
+    const assetLoans = await assetContract.getAvailableAssetLoans(BigNumber.from(id));
 
     const items: Loan[] = assetLoans.map((l: any) => {
       return {

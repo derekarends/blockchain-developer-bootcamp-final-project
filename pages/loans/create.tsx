@@ -1,9 +1,9 @@
 import * as React from 'react';
 import { ethers } from 'ethers';
 import { useRouter } from 'next/router';
-import { Marketplace } from '../../typechain/Marketplace';
-import { NftAddress, MarketAddress } from '../../utils/EnvVars';
-import MarketContract from '../../artifacts/contracts/Marketplace.sol/Marketplace.json';
+import { LoanContract } from '../../typechain/LoanContract';
+import { LoanContractAddress } from '../../utils/EnvVars';
+import LoanContractJson from '../../artifacts/contracts/LoanContract.sol/LoanContract.json';
 import { Loan } from '../../components/Types';
 import { useAuth } from '../../components/AuthContext';
 import { validateForm } from '../../utils/FormValidator';
@@ -33,14 +33,14 @@ function CreateLoan() {
     const payments = ethers.utils.parseUnits(formInput.paymentAmount, 'ether');
     const interest = ethers.utils.parseUnits(formInput.interest, 'ether');
 
-    const marketContract = new ethers.Contract(
-      MarketAddress,
-      MarketContract.abi,
+    const loanContract = new ethers.Contract(
+      LoanContractAddress,
+      LoanContractJson.abi,
       auth.signer
-    ) as Marketplace;
+    ) as LoanContract;
 
     const { assetId } = formInput;
-    const tx = await marketContract.createNewLoan(assetId, interest, payments, {
+    const tx = await loanContract.createNewLoan(assetId, interest, payments, {
       value: loanAmount,
     });
     await tx.wait();

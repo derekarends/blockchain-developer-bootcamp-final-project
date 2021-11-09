@@ -6,10 +6,10 @@ import { Loan, Asset } from '../components/Types';
 import Title from '../components/Title';
 import Routes from '../utils/Routes';
 import { NFT } from '../typechain/NFT';
-import { Marketplace } from '../typechain/Marketplace';
+import { AssetContract } from '../typechain/AssetContract';
 import NFTContract from '../artifacts/contracts/NFT.sol/NFT.json';
-import MarketplaceContract from '../artifacts/contracts/Marketplace.sol/Marketplace.json';
-import { NftAddress, MarketAddress } from '../utils/EnvVars';
+import AssetContractJson from '../artifacts/contracts/AssetContract.sol/AssetContract.json';
+import { NftAddress, AssetContractAddress } from '../utils/EnvVars';
 import { FetchState } from '../components/Types';
 import { useAuth } from '../components/AuthContext';
 import { Status, useSnack } from '../components/SnackContext';
@@ -37,11 +37,11 @@ function Dashboard() {
     getMyLendings();
   }, [auth.signer]);
   
-  const marketContract = new ethers.Contract(
-    MarketAddress,
-    MarketplaceContract.abi,
+  const assetContract = new ethers.Contract(
+    AssetContractAddress,
+    AssetContractJson.abi,
     auth.signer
-  ) as Marketplace;
+  ) as AssetContract;
 
   async function mapResultToAsset(data: any): Promise<Asset[]> {
     const items: Asset[] = await Promise.all(
@@ -80,14 +80,14 @@ function Dashboard() {
   }
 
   async function getMyAssets() {
-    const data = await marketContract.getMyAssets();
+    const data = await assetContract.getMyAssets();
     const items: Asset[] = await mapResultToAsset(data);
     setMyAssets(items);
     setMyAssetsState(FetchState.idle);
   }
 
   async function getMyListedAssets() {
-    const data = await marketContract.getMyListedAssets();
+    const data = await assetContract.getMyListedAssets();
     const items: Asset[] = await mapResultToAsset(data);
     setListedAssets(items);
     setListedAssetsState(FetchState.idle);
@@ -98,21 +98,21 @@ function Dashboard() {
   }
 
   async function getMyLendings() {
-    const data = await marketContract.getMyLendings();
+    const data = await assetContract.getMyLendings();
     const items: Loan[] = mapResultToLoan(data);
     setLendings(items);
     setLendingState(FetchState.idle);
   }
 
   async function cancelAssetSale(id: number) {
-    await marketContract.cancelListingAsset(id);
+    await assetContract.cancelListingAsset(id);
     const filtered = listedAssets.filter((f: Asset) => f.id !== id);
     setListedAssets(filtered);
     await getMyAssets();
   }
 
   async function cancelLending(id: number) {
-    await marketContract.cancelLoan(id);
+    await assetContract.cancelLoan(id);
     const filtered = myLendings.filter((f: Loan) => f.id !== id);
     setLendings(filtered);
   }
