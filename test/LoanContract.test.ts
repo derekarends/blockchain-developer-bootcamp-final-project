@@ -5,24 +5,28 @@ import { NFT } from '../typechain/NFT';
 import { LoanContract } from '../typechain/LoanContract';
 import { AssetContract } from '../typechain/AssetContract';
 import { BigNumber } from 'ethers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 chai.use(solidity);
 
 const { expect } = chai;
 const ContractName = 'LoanContract';
-const oneEth = ethers.utils.parseUnits('1', 'ether');
-const auctionPrice = ethers.utils.parseUnits('10', 'ether');
+const assetPrice = ethers.utils.parseUnits('10', 'ether');
+const tokenId = 1;
 
 describe(`${ContractName}`, () => {
   let loanContract: LoanContract;
   let assetContract: AssetContract;
   let nft: NFT;
 
-  async function createNft(id: number) {
+  async function createNewListing(id: number) {
     const listingFee = await assetContract.listingFee();
     await nft.createToken(`https://www.mytokenlocation${id}.com`);
-    await assetContract.listNewAsset(nft.address, id, auctionPrice, { value: listingFee });
+    await assetContract.listNewAsset(nft.address, id, assetPrice, { value: listingFee });
+  }
+
+  async function createListingAndLoan(id: number) {
+    await createNewListing(id);
+    return await loanContract.createNewLoan(id, { value: assetPrice });
   }
 
   beforeEach(async () => {
@@ -46,14 +50,13 @@ describe(`${ContractName}`, () => {
    * createNewLoan Tests
    */
   describe('createNewLoan', async () => {
-    const tokenId = 1;
     it('should require asset being for sale', async () => {
-      await createNft(tokenId);
+      await createNewListing(tokenId);
       const signers = await ethers.getSigners();
-      await assetContract.connect(signers[1]).buyAsset(tokenId, { value: auctionPrice });
+      await assetContract.connect(signers[1]).buyAsset(tokenId, { value: assetPrice });
 
       try {
-        await loanContract.createNewLoan(1, { value: auctionPrice });
+        await loanContract.createNewLoan(1, { value: assetPrice });
         expect.fail('The transaction should have thrown an error');
       } catch (ex) {
         const err = ex as Error;
@@ -62,7 +65,7 @@ describe(`${ContractName}`, () => {
     });
 
     it('should require full amount of asset to be sent', async () => {
-      await createNft(1);
+      await createNewListing(1);
 
       try {
         await loanContract.createNewLoan(tokenId, { value: 0 });
@@ -74,9 +77,7 @@ describe(`${ContractName}`, () => {
     });
 
     it('should emit a loan was created', async () => {
-      await createNft(tokenId);
-
-      const tx = await loanContract.createNewLoan(tokenId, { value: auctionPrice });
+      const tx = await createListingAndLoan(tokenId);
       expect(tx).to.emit(loanContract, 'LoanCreated');
     });
   });
@@ -91,10 +92,8 @@ describe(`${ContractName}`, () => {
     });
 
     it('should return two results', async () => {
-      const tokenId = 1;
-      await createNft(tokenId);
-      await loanContract.createNewLoan(tokenId, { value: auctionPrice });
-      await loanContract.createNewLoan(tokenId, { value: auctionPrice });
+      await createListingAndLoan(tokenId);
+      await loanContract.createNewLoan(tokenId, { value: assetPrice });
 
       const items = await loanContract.getAllLoans();
       expect(items.length).to.be.eq(2);
@@ -109,8 +108,7 @@ describe(`${ContractName}`, () => {
    */
   describe('cancelLoan', async () => {
     it('should require only lender to cancel', async () => {
-      await createNft(1);
-      await loanContract.createNewLoan(1, { value: auctionPrice });
+      await createListingAndLoan(1);
       try {
         const signers = await ethers.getSigners();
         await loanContract.connect(signers[1]).cancelLoan(1);
@@ -133,80 +131,130 @@ describe(`${ContractName}`, () => {
     //     expect(err.message).to.contain('Only the lender can canel the loan');
     //   }
     // });
+    it('should refund lender loan amount', async () => {
+      const signers = await ethers.getSigners();
+      const lender = signers[1];
+      await createNewListing(1);
+      await loanContract.connect(lender).createNewLoan(1, { value: assetPrice });
+      const loan = await loanContract.getLoan(1);
+      const negLoanAmount = BigNumber.from(loan.loanAmount).mul(-1);
 
-    it('should emit a loan was created', async () => {
-      await createNft(1);
-      await loanContract.createNewLoan(1, { value: auctionPrice });
+      const tx = await loanContract.connect(lender).cancelLoan(1);
+      expect(tx, 'contract balance should have decreased by loan amount').to.changeEtherBalance(
+        loanContract,
+        negLoanAmount
+      );
+      expect(tx, 'lender balance should have increased by loan amount').to.changeEtherBalance(
+        lender,
+        loan.loanAmount
+      );
+    });
+
+    it('should emit a loan was cancelled', async () => {
+      await createListingAndLoan(1);
       const tx = await loanContract.cancelLoan(1);
       expect(tx).to.emit(loanContract, 'LoanCancelled');
     });
   });
 
   /**
-   * getMyLendings Tests
+   * applyForLoan Tests
    */
-  // describe('getMyLendings', async () => {
-  //   it('should return an empty list', async () => {
-  //     const items = await marketplace.getMyLendings();
-  //     expect(items).to.be.empty;
-  //   });
+  describe('applyForLoan', async () => {
+    it('should require loan to be new', async () => {
+      await createListingAndLoan(tokenId);
+      const signers = await ethers.getSigners();
+      try {
+        await loanContract.connect(signers[1]).applyForLoan(tokenId);
+        await loanContract.connect(signers[1]).applyForLoan(tokenId);
+        expect.fail('The transaction should have thrown an error');
+      } catch (ex) {
+        const err = ex as Error;
+        expect(err.message).to.contain('This loan is not available');
+      }
+    });
 
-  //   it('should return one results because there is one loan', async () => {
-  //     await createNft(1);
-  //     await marketplace.createNewLoan(1, 1, 1, { value: auctionPrice });
-  //     const items = await marketplace.getMyLendings();
-  //     expect(items.length).to.be.eq(1);
-  //     expect(BigNumber.from(items[0].id).toNumber()).to.be.eq(1);
-  //   });
-  // });
+    it('should emit a loan was requested', async () => {
+      await createListingAndLoan(tokenId);
+      const signers = await ethers.getSigners();
+      const tx = await loanContract.connect(signers[1]).applyForLoan(tokenId);
+      expect(tx).to.emit(loanContract, 'LoanRequest');
+    });
+  });
+     
+  /**
+   * approveLoan Tests
+   */
+  describe('approveLoan', async () => {
+    it('should require only lender to approve', async () => {
+      await createListingAndLoan(tokenId);
+      try {
+        const signers = await ethers.getSigners();
+        await loanContract.connect(signers[1]).approveLoan(tokenId);
+        expect.fail('The transaction should have thrown an error');
+      } catch (ex) {
+        const err = ex as Error;
+        expect(err.message).to.contain('Only lender can approve loan');
+      }
+    });
+
+    it('should require only pending loans to be approved', async () => {
+      await createListingAndLoan(tokenId);
+      try {
+        await loanContract.approveLoan(tokenId);
+        expect.fail('The transaction should have thrown an error');
+      } catch (ex) {
+        const err = ex as Error;
+        expect(err.message).to.contain('Only pending loans can be approved');
+      }
+    });
+
+    it('should emit a loan was approved', async () => {
+      await createListingAndLoan(tokenId);
+      const signers = await ethers.getSigners();
+      await loanContract.connect(signers[1]).applyForLoan(tokenId);
+
+      const tx = await loanContract.approveLoan(tokenId);
+      expect(tx).to.emit(loanContract, 'LoanApproved');
+      expect(tx).to.emit(assetContract, 'AssetSold');
+    });
+  });
+
 
   /**
-   * getAvailableAssetLoans Tests
+   * declineLoan Tests
    */
-  // describe('getAvailableAssetLoans', async () => {
-  //   it('should return an empty list', async () => {
-  //     await createNft(1);
-  //     const items = await marketplace.getAvailableAssetLoans(1);
-  //     expect(items).to.be.empty;
-  //   });
+  describe('declineLoan', async () => {
+    it('should require only lender to decline', async () => {
+      await createListingAndLoan(tokenId);
+      try {
+        const signers = await ethers.getSigners();
+        await loanContract.connect(signers[1]).declineLoan(tokenId);
+        expect.fail('The transaction should have thrown an error');
+      } catch (ex) {
+        const err = ex as Error;
+        expect(err.message).to.contain('Only lender can decline loan');
+      }
+    });
 
-  //   it('should require the loan to be new', async () => {
-  //     const signers = await ethers.getSigners();
-  //     await createNft(1);
+    it('should require only pending loans can be declined', async () => {
+      await createListingAndLoan(tokenId);
+      try {
+        await loanContract.declineLoan(tokenId);
+        expect.fail('The transaction should have thrown an error');
+      } catch (ex) {
+        const err = ex as Error;
+        expect(err.message).to.contain('Only pending loans can be declined');
+      }
+    });
 
-  //     await marketplace.createNewLoan(1, 1, 1, { value: auctionPrice });
-  //     await marketplace.connect(signers[1]).applyForLoan(1);
+    it('should emit a loan was declined', async () => {
+      await createListingAndLoan(tokenId);
+      const signers = await ethers.getSigners();
+      await loanContract.connect(signers[1]).applyForLoan(tokenId);
 
-  //     try {
-  //       await marketplace.connect(signers[2]).applyForLoan(1);
-  //       expect.fail('The transaction should have thrown an error');
-  //     } catch (ex) {
-  //       const err = ex as Error;
-  //       expect(err.message).to.contain('This loan is not available');
-  //     }
-  //   });
-
-  //   it('should return one results because there is one loan', async () => {
-  //     await createNft(1);
-  //     await marketplace.createNewLoan(1, 1, 1, { value: auctionPrice });
-  //     const items = await marketplace.getAvailableAssetLoans(1);
-  //     expect(items.length).to.be.eq(1);
-  //     expect(BigNumber.from(items[0].id).toNumber()).to.be.eq(1);
-  //   });
-  // });
-
-  // describe('getMyLoans', async () => {
-  //   it('should return an empty list', async () => {
-  //     const items = await marketplace.getMyLoans();
-  //     expect(items).to.be.empty;
-  //   });
-
-  //   it('should return one results because there is one loan', async () => {
-  //     await createNft(1);
-  //     await marketplace.createNewLoan(1, 1, 1, { value: auctionPrice });
-  //     const items = await marketplace.getMyLendings();
-  //     expect(items.length).to.be.eq(1);
-  //     expect(BigNumber.from(items[0].id).toNumber()).to.be.eq(1);
-  //   });
-  // });
+      const tx = await loanContract.declineLoan(tokenId);
+      expect(tx).to.emit(loanContract, 'LoanDeclined');
+    });
+  });
 });

@@ -53,14 +53,12 @@ function AssetDetails() {
       auth.signer
     ) as AssetContract;
     const asset = await assetContract.getAsset(BigNumber.from(id));
-
     const tokenUri = await tokenContract.tokenURI(asset.tokenId);
-    let meta;
-
+    let meta: any;
     try {
       meta = await axios.get(tokenUri);
     } catch (e: unknown) {
-      console.log(e);
+      console.log(`Error getting from ipfs: ${e}`);
     }
 
     const price = ethers.utils.formatUnits(asset.price.toString(), 'ether');

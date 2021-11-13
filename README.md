@@ -12,7 +12,6 @@
 * Be able to make payment on loan
 * Take over asset if loan expired
 * When applying for loan/creating loan bring in asset information
-* upload images to ipfs
 
 ## To Deploy
 

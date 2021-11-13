@@ -4,6 +4,8 @@ pragma solidity ^0.8.4;
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "./LoanContract.sol";
 import "hardhat/console.sol";
 
 
@@ -11,14 +13,13 @@ import "hardhat/console.sol";
  * @author Derek Arends
  * @title A contract to manage ownership of assets
  */
-contract AssetContract is ReentrancyGuard {
+contract AssetContract is ReentrancyGuard, Ownable {
   /* 
    * State variables
    */
   using Counters for Counters.Counter;
   Counters.Counter private assetIds;
 
-  address payable private owner;
   uint256 public listingFee = 0.025 ether;
   uint256 public minAssetPrice = 0.5 ether;
   mapping(uint256 => Asset) public assets;
@@ -54,21 +55,10 @@ contract AssetContract is ReentrancyGuard {
   /* 
    * Modifiers
    */
-  modifier onlyOwner() {
-    require(msg.sender == owner, "Only an owner can do this");
-    _;
-  }
 
   modifier onlyForSale(Asset memory asset) {
     require(asset.seller != address(0) && asset.state == AssetState.ForSale, "Asset is not for sale");
     _;
-  }
-
-  /* 
-   * Initialize the contract assigning the owner to the creator
-   */
-  constructor() {
-    owner = payable(msg.sender);
   }
 
   /* 
@@ -169,7 +159,6 @@ contract AssetContract is ReentrancyGuard {
 
     require(asset.price == msg.value, "Invalid amount sent");
     require(asset.seller != msg.sender, "No need to buy your own asset");
-    require(asset.seller != address(0) && asset.state == AssetState.ForSale, "Asset is not for sale");
     
     IERC721(asset.nftContract).transferFrom(address(this), msg.sender, asset.tokenId);
     asset.state = AssetState.NotForSale;
@@ -181,10 +170,51 @@ contract AssetContract is ReentrancyGuard {
     // clear seller after sending funds has succeeded
     asset.seller = payable(address(0));
 
-    (bool feeTransfered, ) = owner.call{value: listingFee}("");
+    (bool feeTransfered, ) = owner().call{value: listingFee}("");
     require(feeTransfered, "Failed to transfer fee");
 
     emit AssetSold(_id);
+  }
+
+  /**
+   * Buys an asset with a loan
+   * @param _loanAddress The address of the loan contract
+   * @param _loanId is the id of the loan
+   * @param _assetId is the id of the asset to buy
+   */
+  function buyAssetWithLoan(
+    address _loanAddress, 
+    uint256 _loanId,
+    uint256 _assetId
+  ) 
+    public 
+    payable 
+    onlyForSale(assets[_assetId])
+    nonReentrant
+  {
+    require(msg.sender == _loanAddress, "Only lender contract can call this");
+    
+    Asset storage asset = assets[_assetId];
+    LoanContract.Loan memory loan = LoanContract(_loanAddress).getLoan(_loanId);
+
+    require(msg.value == asset.price, "Invalid amount sent");
+    require(loan.borrower != asset.seller, "No need to buy your own asset");
+    
+    IERC721(asset.nftContract).transferFrom(address(this), loan.borrower, asset.tokenId);
+    asset.state = AssetState.NotForSale;
+    asset.owner = payable(loan.borrower);
+    asset.lender = payable(loan.lender);
+
+    (bool sellerGotFunds, ) = asset.seller.call{value: msg.value}("");
+    require(sellerGotFunds, "Failed to transfer value to seller");
+
+    // clear seller after sending funds has succeeded
+    asset.seller = payable(address(0));
+
+    (bool feeTransfered, ) = owner().call{value: listingFee}("");
+    require(feeTransfered, "Failed to transfer fee");
+
+    emit AssetSold(_assetId);
   }
 
    /**
@@ -227,97 +257,4 @@ contract AssetContract is ReentrancyGuard {
 
      emit AssetCancelled(_assetId);
    }
-
-   /**
-   * Get all assets
-   * @return assetsToReturn is the list of assets available
-   */
-  // function getListings() 
-  //   external 
-  //   view 
-  //   returns(Asset[] memory assetsToReturn) 
-  // {
-  //   uint256 numOfAllAssets = assetIds.current();
-  //   uint256 numOfUnsoldAssets = 0;
-  //   uint256 currentIndex = 0;
-
-  //   for (uint256 i = 1; i <= numOfAllAssets; i++) {
-  //     if (assets[i].seller != address(0) && assets[i].state == AssetState.ForSale) {
-  //       numOfUnsoldAssets += 1;
-  //     }
-  //   }
-
-  //   assetsToReturn = new Asset[](numOfUnsoldAssets);
-
-  //   for (uint256 i = 1; i <= numOfAllAssets; i++) {
-  //     if (assets[i].seller != address(0) && assets[i].state == AssetState.ForSale) {
-  //       assetsToReturn[currentIndex] = assets[i];
-  //       currentIndex += 1;
-  //     }
-  //   }
-
-  //   return assetsToReturn;
-  //  }
-  
-  /**
-   * Get the assets the sender owns
-   * @return assetsToReturn is the list of assets available
-   */
-  // function getMyAssets() 
-  //   external 
-  //   view 
-  //   returns(Asset[] memory assetsToReturn) 
-  // {
-  //   uint256 numOfAllAssets = assetIds.current();
-  //   uint256 assetsSenderOwns = 0;
-  //   uint256 currentIndex = 0;
-
-  //   for (uint256 i = 1; i <= numOfAllAssets; i++) {
-  //     if (assets[i].owner == msg.sender && assets[i].state != AssetState.ForSale) {
-  //       assetsSenderOwns += 1;
-  //     }
-  //   }
-
-  //   assetsToReturn = new Asset[](assetsSenderOwns);
-
-  //   for (uint256 i = 1; i <= numOfAllAssets; i++) {
-  //     if (assets[i].owner == msg.sender && assets[i].state != AssetState.ForSale) {
-  //       assetsToReturn[currentIndex] = assets[i];
-  //       currentIndex += 1;
-  //     }
-  //   }
-
-  //   return assetsToReturn;
-  //  }
-
-  /**
-   * Get the assets the user is selling
-   * @return assetsToReturn is the list of assets available
-   */
-  // function getMyListedAssets() 
-  //   external 
-  //   view 
-  //   returns(Asset[] memory assetsToReturn) 
-  // {
-  //   uint256 numOfAllAssets = assetIds.current();
-  //   uint256 assetsSenderIsSelling = 0;
-  //   uint256 currentIndex = 0;
-
-  //   for (uint256 i = 1; i <= numOfAllAssets; i++) {
-  //     if (assets[i].owner == msg.sender && assets[i].state == AssetState.ForSale) {
-  //       assetsSenderIsSelling += 1;
-  //     }
-  //   }
-
-  //   assetsToReturn = new Asset[](assetsSenderIsSelling);
-
-  //   for (uint256 i = 1; i <= numOfAllAssets; i++) {
-  //     if (assets[i].owner == msg.sender && assets[i].state == AssetState.ForSale) {
-  //       assetsToReturn[currentIndex] = assets[i];
-  //       currentIndex += 1;
-  //     }
-  //   }
-
-  //   return assetsToReturn;
-  //  }
 }

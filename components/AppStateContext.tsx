@@ -42,31 +42,33 @@ function AppStateProvider(props: any) {
   const [loans, setLoans] = React.useState<Loan[]>([]);
   const [state, setState] = React.useState<FetchState>(FetchState.idle);
 
+  React.useEffect(() => {
+    setState(FetchState.loading);
+    getAssets().then(() => {
+        setState(FetchState.idle);
+    });
+  }, []);
+
+  React.useEffect(() => {
+    setState(FetchState.loading);
+    getLoans().then(() => {
+      setState(FetchState.idle);
+    });
+  }, [assets]);
+
   /**
    * This will get noisey but wanted to learn to play with events
    * and how they could be used
    */
-  function addEventListeners() {
-    assetContract.on('AssetListed', getAssets);
-    assetContract.on('AssetCancelled', getAssets);
-    assetContract.on('AssetPending', getAssets);
-    assetContract.on('AssetSold', getAssets);
-    loanContract.on('LoanCreated', getLoans);
-    loanContract.on('LoanCancelled', getLoans);
-    loanContract.on('LoanRequest', getLoans);
-    loanContract.on('LoanApproved', getLoans);
-    loanContract.on('LoanDeclined', getLoans);
-  }
-
-  React.useLayoutEffect(() => {
-    setState(FetchState.loading);
-    addEventListeners();
-    getAssets().then(() => {
-      getLoans().then(() => {
-        setState(FetchState.idle);
-      });
-    });
-  }, []);
+  assetContract.on('AssetListed', getAssets);
+  assetContract.on('AssetCancelled', getAssets);
+  assetContract.on('AssetPending', getAssets);
+  assetContract.on('AssetSold', getAssets);
+  loanContract.on('LoanCreated', getLoans);
+  loanContract.on('LoanCancelled', getLoans);
+  loanContract.on('LoanRequest', getLoans);
+  loanContract.on('LoanApproved', getLoans);
+  loanContract.on('LoanDeclined', getLoans);
 
   async function getAssets(): Promise<void> {
     const data = await assetContract.getAllAssets();
@@ -74,12 +76,11 @@ function AppStateProvider(props: any) {
     const items: Asset[] = await Promise.all(
       data.map(async (i) => {
         const tokenUri = await tokenContract.tokenURI(i.tokenId);
-        let meta;
-
+        let meta: any;
         try {
           meta = await axios.get(tokenUri);
         } catch (e: unknown) {
-          console.log(e);
+          console.log(`Error getting from ipfs: ${e}`);
         }
 
         const price = ethers.utils.formatUnits(i.price.toString(), 'ether');
@@ -130,7 +131,7 @@ function AppStateProvider(props: any) {
       AssetContractJson.abi,
       signer
     ) as AssetContract;
-    
+
     await assetContractWithSigner.cancelListingAsset(id);
     const filteredAssets = assets.filter((f: Asset) => f.id !== id);
     setAssets(filteredAssets);
