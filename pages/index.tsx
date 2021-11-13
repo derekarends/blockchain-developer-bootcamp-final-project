@@ -1,7 +1,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { Col, Container, Row, Button, Card } from 'react-bootstrap';
-import { Asset } from '../components/Types';
+import { Asset, AssetState } from '../components/Types';
 import Routes from '../utils/Routes';
 import { FetchState } from '../components/Types';
 import { useAppState } from '../components/AppStateContext';
@@ -12,15 +12,16 @@ function Index() {
   if (state === FetchState.loading) {
     return <div>Loading...</div>
   }
-
-  if (assets.length === 0) {
+  console.log(assets);
+  const filteredAssets = assets?.filter((f: Asset) => f?.state === AssetState.ForSale);
+  if (filteredAssets.length === 0) {
     return <div>No listings available</div>
   }
 
   return (
     <Container>
       <Row>
-        {assets.map((asset: Asset) => {
+        {filteredAssets.map((asset: Asset) => {
           return (
             <Col key={asset.id}>
               <Card style={{ width: '18rem', marginBottom: '10px' }}>

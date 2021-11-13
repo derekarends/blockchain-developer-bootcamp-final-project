@@ -4,16 +4,18 @@ import { useRouter } from 'next/router';
 import { LoanContract } from '../../typechain/LoanContract';
 import { LoanContractAddress } from '../../utils/EnvVars';
 import LoanContractJson from '../../artifacts/contracts/LoanContract.sol/LoanContract.json';
-import { Loan } from '../../components/Types';
+import { EthError, Loan } from '../../components/Types';
 import { useAuth } from '../../components/AuthContext';
 import { validateForm } from '../../utils/FormValidator';
 import { Col, Button, Form } from 'react-bootstrap';
 import { Input, InputAmount } from '../../components/Input';
 import Routes from '../../utils/Routes';
+import { useSnack, Status } from '../../components/SnackContext';
 
 function CreateLoan() {
   const auth = useAuth();
   const router = useRouter();
+  const snack = useSnack();
   const [formInput, onFormInputChange] = React.useState<Loan>();
 
   async function save(e: any) {
@@ -21,14 +23,7 @@ function CreateLoan() {
     if (!validateForm(e)) {
       return;
     }
-    try {
-      createLoan();
-    } catch (error) {
-      console.log('Error creating loan: ', error);
-    }
-  }
 
-  async function createLoan() {
     const loanAmount = ethers.utils.parseUnits(formInput.loanAmount, 'ether');
 
     const loanContract = new ethers.Contract(
@@ -37,12 +32,17 @@ function CreateLoan() {
       auth.signer
     ) as LoanContract;
 
-    const { assetId } = formInput;
-    const tx = await loanContract.createNewLoan(assetId, {
-      value: loanAmount,
-    });
-    await tx.wait();
-    router.push(`${Routes.Dashboard}`);
+    try {
+      const { assetId } = formInput;
+      const tx = await loanContract.createNewLoan(assetId, {
+        value: loanAmount,
+      });
+      await tx.wait();
+      router.push(`${Routes.Dashboard}`);
+    } catch (e: unknown) {
+      const err = e as EthError;
+      snack.display(Status.error, err?.data?.message ?? 'Something went wrong');
+    }
   }
 
   return (

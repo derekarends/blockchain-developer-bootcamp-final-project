@@ -1,56 +1,82 @@
 import * as React from 'react';
 import { ethers } from 'ethers';
+import { create as ipfsHttpClient } from 'ipfs-http-client';
 import { useRouter } from 'next/router';
 import { NFT } from '../../typechain/NFT';
 import { AssetContract } from '../../typechain/AssetContract';
 import { NftAddress, AssetContractAddress } from '../../utils/EnvVars';
 import NFTContract from '../../artifacts/contracts/NFT.sol/NFT.json';
 import AssetContractJson from '../../artifacts/contracts/AssetContract.sol/AssetContract.json';
-import { Asset } from '../../components/Types';
+import { Asset, EthError } from '../../components/Types';
 import { useAuth } from '../../components/AuthContext';
 import { validateForm } from '../../utils/FormValidator';
-import { toBase64 } from '../../utils/File';
 import { Col, Button, InputGroup, FormGroup, Form, FormLabel, FormControl } from 'react-bootstrap';
 import { Input } from '../../components/Input';
 import Routes from '../../utils/Routes';
+import { useSnack, Status } from '../../components/SnackContext';
+import { toBase64 } from '../../utils/File';
+
+const client = ipfsHttpClient({
+  url: 'https://ipfs.infura.io:5001/api/v0'
+});
 
 function CreateAsset() {
   const auth = useAuth();
   const router = useRouter();
-  const [fileUrl, setFileUrl] = React.useState(null);
+  const snack = useSnack();
+  const [file, setFile] = React.useState(null);
+  const [base64File, setBase64File] = React.useState(null);
   const [formInput, onFormInputChange] = React.useState<Asset>();
 
-  async function onFileInputChange(e: any) {
+  async function onFileInputChange(e: any): Promise<void> {
     const file = e.target.files[0];
+    setFile(file);
+    const b64 = await toBase64(file);
+    setBase64File(b64);
+  }
+
+  async function saveFile(): Promise<string> {
     try {
-      const fileInBase64 = await toBase64(file);
-      setFileUrl(fileInBase64);
-    } catch (error) {
-      console.log('Error uploading file: ', error);
+      const added = await client.add(
+        file,
+        {
+          progress: (prog) => console.log(`received: ${prog}`),
+          pin: false
+        }
+      );
+      return `https://ipfs.infura.io/ipfs/${added.path}`;
+    } catch (e: unknown) {
+      snack.display(Status.error, `Error uploading file`);
+      console.log(e);
+      return '';
     }
   }
 
-  async function save(e: any) {
+  async function save(e: any): Promise<void> {
     e.preventDefault();
     if (!validateForm(e)) {
       return;
     }
 
+    const fileUrl = await saveFile();
     const { name, description } = formInput;
     const data = JSON.stringify({
       name,
       description,
-      image: 'fileUrl',
+      image: fileUrl,
     });
 
     try {
-      listNewAsset(data);
-    } catch (error) {
-      console.log('Error listing asset: ', error);
+      const added = await client.add(data, { pin: false });
+      const url = `https://ipfs.infura.io/ipfs/${added.path}`;
+     listNewAsset(url);
+    } catch (e: unknown) {
+      const err = e as EthError;
+      snack.display(Status.error, err?.data?.message ?? 'An error happened when listing the asset');
     }
   }
 
-  async function listNewAsset(url: string) {
+  async function listNewAsset(url: string): Promise<void> {
     const nftContract = new ethers.Contract(NftAddress, NFTContract.abi, auth.signer) as NFT;
     let transaction = await nftContract.createToken(url);
     const tx = await transaction.wait();
@@ -58,16 +84,14 @@ function CreateAsset() {
     const value = event.args[2];
     const tokenId = value.toNumber();
 
-    const price = ethers.utils.parseUnits(formInput.price, 'ether');
-
-    /* then list the item for sale on the marketplace */
     const assetContract = new ethers.Contract(
       AssetContractAddress,
       AssetContractJson.abi,
       auth.signer
     ) as AssetContract;
-    const listingFee = await assetContract.listingFee();
 
+    const price = ethers.utils.parseUnits(formInput.price, 'ether');
+    const listingFee = await assetContract.listingFee();
     transaction = await assetContract.listNewAsset(NftAddress, tokenId, price, {
       value: listingFee,
     });
@@ -113,7 +137,7 @@ function CreateAsset() {
             required
           />
           <div className="invalid-feedback">Asset is required.</div>
-          {fileUrl && <img className="rounded mt-4" width="350" src={fileUrl} />}
+          {!!base64File && <img className="rounded mt-4" width="350" src={base64File} />}
         </FormGroup>
         <Button onClick={save}>Create Digital Asset</Button>
       </Form>

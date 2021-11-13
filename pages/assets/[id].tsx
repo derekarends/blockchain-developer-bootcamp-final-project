@@ -25,6 +25,7 @@ import { FetchState } from '../../components/Types';
 import { useAuth } from '../../components/AuthContext';
 import { Status, useSnack } from '../../components/SnackContext';
 import { useAppState } from '../../components/AppStateContext';
+import axios from 'axios';
 
 function AssetDetails() {
   const auth = useAuth();
@@ -32,7 +33,6 @@ function AssetDetails() {
   const { loans } = useAppState();
   const [asset, setAsset] = React.useState<Asset>();
   const [state, setState] = React.useState<FetchState>(FetchState.loading);
-  const [loanState, setLoanState] = React.useState<FetchState>(FetchState.loading);
   const [isSelling, setIsSelling] = React.useState<boolean>(false);
   const [salePrice, setSalePrice] = React.useState<string>('0');
   const router = useRouter();
@@ -55,15 +55,22 @@ function AssetDetails() {
     const asset = await assetContract.getAsset(BigNumber.from(id));
 
     const tokenUri = await tokenContract.tokenURI(asset.tokenId);
-    const meta = JSON.parse(tokenUri);
+    let meta;
+
+    try {
+      meta = await axios.get(tokenUri);
+    } catch (e: unknown) {
+      console.log(e);
+    }
+
     const price = ethers.utils.formatUnits(asset.price.toString(), 'ether');
     const item: Asset = {
       id: asset.tokenId.toNumber(),
-      name: meta.name,
-      description: meta.description,
+      name: `${asset.tokenId.toNumber()}: ${meta?.data?.name ?? ''}`,
+      description: meta?.data?.description,
       price,
       seller: asset.seller,
-      image: meta.image,
+      image: meta?.data?.image,
       state: asset.state,
       owner: asset.owner,
     };
@@ -136,7 +143,7 @@ function AssetDetails() {
     <Container>
       <Row>
         <Col md={4}>
-          <Image src={asset.image} />
+          <Image src={asset.image} width='300' />
         </Col>
         <Col>
           <Row className="mb-16">
@@ -245,7 +252,7 @@ function AssetDetails() {
                         className="d-flex justify-content-between align-items-start"
                       >
                         <div className="ms-2 me-auto">
-                          <div className="fw-bold">{m.name} ETH</div>
+                          <div className="fw-bold">{m.name}</div>
                           {m.description}
                         </div>
                         <Link href={`${Routes.Loans}/${m.id}`}>

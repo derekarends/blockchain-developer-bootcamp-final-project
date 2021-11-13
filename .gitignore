@@ -31,6 +31,7 @@ yarn-error.log*
 
 node_modules
 .env
+.secrets
 
 #Hardhat files
 cache

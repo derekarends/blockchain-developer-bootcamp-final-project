@@ -1,15 +1,9 @@
 import * as React from 'react';
 import Link from 'next/link';
-import { ethers } from 'ethers';
 import { Col, Container, Row, Button, ListGroup } from 'react-bootstrap';
 import { Loan, Asset, BaseType } from '../components/Types';
 import Title from '../components/Title';
 import Routes from '../utils/Routes';
-import { AssetContract } from '../typechain/AssetContract';
-import AssetContractJson from '../artifacts/contracts/AssetContract.sol/AssetContract.json';
-import { LoanContract } from '../typechain/LoanContract';
-import LoanContractJson from '../artifacts/contracts/LoanContract.sol/LoanContract.json';
-import { AssetContractAddress, LoanContractAddress } from '../utils/EnvVars';
 import { FetchState } from '../components/Types';
 import { useAuth } from '../components/AuthContext';
 import { Status, useSnack } from '../components/SnackContext';
@@ -20,7 +14,7 @@ function Dashboard() {
   const auth = useAuth();
   const snack = useSnack();
   const [myAddress, setAddress] = React.useState('');
-  const { assets, loans, state } = useAppState();
+  const appState = useAppState();
 
   React.useEffect(() => {
     if (!auth.signer) {
@@ -31,26 +25,13 @@ function Dashboard() {
       setAddress(addr);
     });
   }, [auth.signer]);
-  
-  const assetContract = new ethers.Contract(
-    AssetContractAddress,
-    AssetContractJson.abi,
-    auth.signer
-  ) as AssetContract;
-
-  const loanContract = new ethers.Contract(
-    LoanContractAddress,
-    LoanContractJson.abi,
-    auth.signer
-  ) as LoanContract;
-
 
   function getMyAssets(): Asset[] {
-    return assets.filter(f => f.owner == myAddress);
+    return appState.assets.filter((f) => f.owner == myAddress);
   }
 
   function getMyListedAssets(): BaseType[] {
-    return assets
+    return appState.assets
       .filter((f: Asset) => f.seller === myAddress)
       .map((m: Asset) => {
         return {
@@ -62,7 +43,7 @@ function Dashboard() {
   }
 
   function getMyLoans(): BaseType[] {
-    return loans
+    return appState.loans
       .filter((f: Loan) => f.borrower === myAddress)
       .map((m: Loan) => {
         return {
@@ -74,7 +55,7 @@ function Dashboard() {
   }
 
   function getMyLendings(): BaseType[] {
-    return loans
+    return appState.loans
       .filter((f: Loan) => f.lender === myAddress)
       .map((m: Loan) => {
         return {
@@ -87,7 +68,7 @@ function Dashboard() {
 
   async function cancelAssetSale(id: number) {
     try {
-      await assetContract.cancelListingAsset(id);
+      await appState.cancelAssetSale(id, auth.signer);
       snack.display(Status.success, 'Listing cancelled');
     } catch (e: unknown) {
       snack.display(Status.error, 'Error while trying to cancel listing');
@@ -96,7 +77,7 @@ function Dashboard() {
 
   async function cancelLending(id: number) {
     try {
-      await loanContract.cancelLoan(id);
+      await appState.cancelLending(id, auth.signer);
       snack.display(Status.success, 'Lending cancelled');
     } catch (e: unknown) {
       snack.display(Status.error, 'Error while trying to cancel lending');
@@ -124,7 +105,7 @@ function Dashboard() {
             <ListItem
               items={getMyAssets()}
               route={Routes.Assets}
-              loading={state === FetchState.loading}
+              loading={appState.state === FetchState.loading}
             />
           </ListGroup>
         </Col>
@@ -134,8 +115,10 @@ function Dashboard() {
             <ListItem
               items={getMyListedAssets()}
               route={Routes.Assets}
-              onCancel={(id) => { cancelAssetSale(id) }}
-              loading={state === FetchState.loading}
+              onCancel={(id) => {
+                cancelAssetSale(id);
+              }}
+              loading={appState.state === FetchState.loading}
             />
           </ListGroup>
         </Col>
@@ -145,21 +128,23 @@ function Dashboard() {
           <Title>Loans</Title>
           <ListGroup>
             <ListItem
-                items={getMyLoans()}
-                route={Routes.Loans}
-                loading={state === FetchState.loading}
-              />
+              items={getMyLoans()}
+              route={Routes.Loans}
+              loading={appState.state === FetchState.loading}
+            />
           </ListGroup>
         </Col>
         <Col md={6}>
           <Title>Lendings</Title>
           <ListGroup>
             <ListItem
-                items={getMyLendings()}
-                route={Routes.Loans}
-                onCancel={(id) => { cancelLending(id) }}
-                loading={state === FetchState.loading}
-              />
+              items={getMyLendings()}
+              route={Routes.Loans}
+              onCancel={(id) => {
+                cancelLending(id);
+              }}
+              loading={appState.state === FetchState.loading}
+            />
           </ListGroup>
         </Col>
       </Row>
