@@ -66,10 +66,10 @@ function CreateAsset() {
       AssetContractJson.abi,
       auth.signer
     ) as AssetContract;
-    const listingPrice = await assetContract.listingPrice();
+    const listingFee = await assetContract.listingFee();
 
     transaction = await assetContract.listNewAsset(NftAddress, tokenId, price, {
-      value: listingPrice,
+      value: listingFee,
     });
     await transaction.wait();
     router.push(`${Routes.Dashboard}`);

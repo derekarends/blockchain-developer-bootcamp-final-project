@@ -8,17 +8,16 @@ export type Asset = BaseType & {
   price: string,
   seller: string,
   image: string,
-  state: AssetState
+  state: AssetState,
+  owner: string
 }
 
 export type Loan = BaseType & {
   assetId?: number,
   loanAmount?: string,
-  interest?: string,
-  paymentAmount?: string
-  //   uint256 expires;
-  //   address payable borrower;
-  //   address payable lender;
+  borrower?: string,
+  lender?: string,
+  state?: LoanState
 }
 
 export type EthError = {
@@ -41,4 +40,10 @@ export enum AssetState {
   ForSale,
   Pending,
   NotForSale
+}
+
+export enum LoanState {
+  New,
+  Pending,
+  Approved
 }

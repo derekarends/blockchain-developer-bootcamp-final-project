@@ -2,39 +2,34 @@ import * as React from 'react';
 import Link from 'next/link';
 import { ethers } from 'ethers';
 import { Col, Container, Row, Button, ListGroup } from 'react-bootstrap';
-import { Loan, Asset } from '../components/Types';
+import { Loan, Asset, BaseType } from '../components/Types';
 import Title from '../components/Title';
 import Routes from '../utils/Routes';
-import { NFT } from '../typechain/NFT';
 import { AssetContract } from '../typechain/AssetContract';
-import NFTContract from '../artifacts/contracts/NFT.sol/NFT.json';
 import AssetContractJson from '../artifacts/contracts/AssetContract.sol/AssetContract.json';
-import { NftAddress, AssetContractAddress } from '../utils/EnvVars';
+import { LoanContract } from '../typechain/LoanContract';
+import LoanContractJson from '../artifacts/contracts/LoanContract.sol/LoanContract.json';
+import { AssetContractAddress, LoanContractAddress } from '../utils/EnvVars';
 import { FetchState } from '../components/Types';
 import { useAuth } from '../components/AuthContext';
 import { Status, useSnack } from '../components/SnackContext';
 import ListItem from '../components/ListItem';
+import { useAppState } from '../components/AppStateContext';
 
 function Dashboard() {
   const auth = useAuth();
   const snack = useSnack();
-  const [getMyAssetsState, setMyAssetsState] = React.useState<FetchState>(FetchState.loading);
-  const [getListedAssetsState, setListedAssetsState] = React.useState<FetchState>(FetchState.loading);
-  const [getLendingState, setLendingState] = React.useState<FetchState>(FetchState.loading);
-  const [getLoanState, setLoanState] = React.useState<FetchState>(FetchState.loading);
-  const [myAssets, setMyAssets] = React.useState<Asset[]>();
-  const [listedAssets, setListedAssets] = React.useState<Asset[]>();
-  const [myLoans, setLoans] = React.useState<Loan[]>();
-  const [myLendings, setLendings] = React.useState<Loan[]>();
+  const [myAddress, setAddress] = React.useState('');
+  const { assets, loans, state } = useAppState();
 
   React.useEffect(() => {
     if (!auth.signer) {
       return;
     }
-    getMyAssets();
-    getMyListedAssets();
-    getMyLoans();
-    getMyLendings();
+
+    auth.signer.getAddress().then((addr: string) => {
+      setAddress(addr);
+    });
   }, [auth.signer]);
   
   const assetContract = new ethers.Contract(
@@ -43,78 +38,69 @@ function Dashboard() {
     auth.signer
   ) as AssetContract;
 
-  async function mapResultToAsset(data: any): Promise<Asset[]> {
-    const items: Asset[] = await Promise.all(
-      data.map(async (i: any) => {
-        const tokenContract = new ethers.Contract(NftAddress, NFTContract.abi, auth.signer) as NFT;
-        const tokenUri = await tokenContract.tokenURI(i.tokenId);
-        const meta = JSON.parse(tokenUri);
-        const price = ethers.utils.formatUnits(i.price.toString(), 'ether');
-        const item: Asset = {
-          id: i.tokenId.toNumber(),
-          name: meta.name,
-          description: meta.description,
-          price,
-          seller: i.seller,
-          image: meta.image,
-          state: i.state,
+  const loanContract = new ethers.Contract(
+    LoanContractAddress,
+    LoanContractJson.abi,
+    auth.signer
+  ) as LoanContract;
+
+
+  function getMyAssets(): Asset[] {
+    return assets.filter(f => f.owner == myAddress);
+  }
+
+  function getMyListedAssets(): BaseType[] {
+    return assets
+      .filter((f: Asset) => f.seller === myAddress)
+      .map((m: Asset) => {
+        return {
+          id: m.id,
+          name: m.name,
+          description: m.description,
         };
-        return item;
-      })
-    );
-
-    return items;
+      });
   }
 
-  function mapResultToLoan(data: any): Loan[] {
-    const items: Loan[] = data.map((l: any) => {
-      return {
-        id: l.id.toNumber(),
-        name: ethers.utils.formatUnits(l.loanAmount.toString(), 'ether'),
-        assetId: l.assetId.toNumber(),
-        description: `Interest Rate of ${l.interest}`,
-      };
-    });
-
-    return items;
+  function getMyLoans(): BaseType[] {
+    return loans
+      .filter((f: Loan) => f.borrower === myAddress)
+      .map((m: Loan) => {
+        return {
+          id: m.id,
+          name: m.name,
+          description: m.description,
+        };
+      });
   }
 
-  async function getMyAssets() {
-    const data = await assetContract.getMyAssets();
-    const items: Asset[] = await mapResultToAsset(data);
-    setMyAssets(items);
-    setMyAssetsState(FetchState.idle);
-  }
-
-  async function getMyListedAssets() {
-    const data = await assetContract.getMyListedAssets();
-    const items: Asset[] = await mapResultToAsset(data);
-    setListedAssets(items);
-    setListedAssetsState(FetchState.idle);
-  }
-
-  function getMyLoans() {
-
-  }
-
-  async function getMyLendings() {
-    const data = await assetContract.getMyLendings();
-    const items: Loan[] = mapResultToLoan(data);
-    setLendings(items);
-    setLendingState(FetchState.idle);
+  function getMyLendings(): BaseType[] {
+    return loans
+      .filter((f: Loan) => f.lender === myAddress)
+      .map((m: Loan) => {
+        return {
+          id: m.id,
+          name: m.name,
+          description: m.description,
+        };
+      });
   }
 
   async function cancelAssetSale(id: number) {
-    await assetContract.cancelListingAsset(id);
-    const filtered = listedAssets.filter((f: Asset) => f.id !== id);
-    setListedAssets(filtered);
-    await getMyAssets();
+    try {
+      await assetContract.cancelListingAsset(id);
+      snack.display(Status.success, 'Listing cancelled');
+    } catch (e: unknown) {
+      snack.display(Status.error, 'Error while trying to cancel listing');
+    }
   }
 
   async function cancelLending(id: number) {
-    await assetContract.cancelLoan(id);
-    const filtered = myLendings.filter((f: Loan) => f.id !== id);
-    setLendings(filtered);
+    try {
+      await loanContract.cancelLoan(id);
+      snack.display(Status.success, 'Lending cancelled');
+    } catch (e: unknown) {
+      snack.display(Status.error, 'Error while trying to cancel lending');
+    }
   }
 
   return (
@@ -136,9 +122,9 @@ function Dashboard() {
           <Title>Owned Assets</Title>
           <ListGroup>
             <ListItem
-              items={myAssets}
+              items={getMyAssets()}
               route={Routes.Assets}
-              loading={getMyAssetsState === FetchState.loading}
+              loading={state === FetchState.loading}
             />
           </ListGroup>
         </Col>
@@ -146,10 +132,10 @@ function Dashboard() {
           <Title>Selling Assets</Title>
           <ListGroup>
             <ListItem
-              items={listedAssets}
+              items={getMyListedAssets()}
               route={Routes.Assets}
-              loading={getListedAssetsState === FetchState.loading}
               onCancel={(id) => { cancelAssetSale(id) }}
+              loading={state === FetchState.loading}
             />
           </ListGroup>
         </Col>
@@ -159,9 +145,9 @@ function Dashboard() {
           <Title>Loans</Title>
           <ListGroup>
             <ListItem
-                items={myLoans}
+                items={getMyLoans()}
                 route={Routes.Loans}
-                loading={getLoanState === FetchState.loading}
+                loading={state === FetchState.loading}
               />
           </ListGroup>
         </Col>
@@ -169,10 +155,10 @@ function Dashboard() {
           <Title>Lendings</Title>
           <ListGroup>
             <ListItem
-                items={myLendings}
+                items={getMyLendings()}
                 route={Routes.Loans}
-                loading={getLendingState === FetchState.loading}
                 onCancel={(id) => { cancelLending(id) }}
+                loading={state === FetchState.loading}
               />
           </ListGroup>
         </Col>

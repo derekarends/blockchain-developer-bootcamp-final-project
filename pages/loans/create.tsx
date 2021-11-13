@@ -30,8 +30,6 @@ function CreateLoan() {
 
   async function createLoan() {
     const loanAmount = ethers.utils.parseUnits(formInput.loanAmount, 'ether');
-    const payments = ethers.utils.parseUnits(formInput.paymentAmount, 'ether');
-    const interest = ethers.utils.parseUnits(formInput.interest, 'ether');
 
     const loanContract = new ethers.Contract(
       LoanContractAddress,
@@ -40,7 +38,7 @@ function CreateLoan() {
     ) as LoanContract;
 
     const { assetId } = formInput;
-    const tx = await loanContract.createNewLoan(assetId, interest, payments, {
+    const tx = await loanContract.createNewLoan(assetId, {
       value: loanAmount,
     });
     await tx.wait();
@@ -60,16 +58,6 @@ function CreateLoan() {
           id="loanAmount"
           label="Amount"
           onInputChange={(e) => onFormInputChange({ ...formInput, loanAmount: e.target.value })}
-        />
-        <InputAmount
-          id="paymentAmount"
-          label="Payment Amount"
-          onInputChange={(e) => onFormInputChange({ ...formInput, paymentAmount: e.target.value })}
-        />
-        <InputAmount
-          id="interest"
-          label="Interest"
-          onInputChange={(e) => onFormInputChange({ ...formInput, interest: e.target.value })}
         />
         <Button onClick={save}>Create Loan</Button>
       </Form>

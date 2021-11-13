@@ -130,6 +130,7 @@ contract LoanContract is ReentrancyGuard {
      require(loans[_loanId].borrower == address(0), "Can not cancel an existing loan");
 
      delete loans[_loanId];
+     loanIds.decrement();
 
      emit LoanCancelled(_loanId);
    }

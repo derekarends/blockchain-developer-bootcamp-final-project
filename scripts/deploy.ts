@@ -7,7 +7,7 @@ async function main() {
   console.log('AssetContract deployed to:', deployedAsset.address);
 
   const LoanContract = await ethers.getContractFactory('LoanContract');
-  const deployedLoan = await LoanContract.deploy();
+  const deployedLoan = await LoanContract.deploy(deployedAsset.address);
   await deployedLoan.deployed();
   console.log('LoanContract deployed to:', deployedLoan.address);
 

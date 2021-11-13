@@ -6,7 +6,7 @@ import { BaseType } from './Types';
 type Props = {
   items: BaseType[];
   route: string;
-  loading: boolean;
+  loading?: boolean;
   onCancel?: (id: number) => void;
 };
 

@@ -4,13 +4,16 @@ import * as React from 'react';
 import { AuthProvider } from '../components/AuthContext';
 import Marketplace from '../components/Marketplace';
 import { SnackProvider } from '../components/SnackContext';
+import { AppStateProvider } from '../components/AppStateContext';
 
 function App({ Component, pageProps }) {
   return (
     <AuthProvider>
-      <SnackProvider>
-        <Marketplace Component={Component} pageProps={pageProps} />
-      </SnackProvider>
+      <AppStateProvider>
+        <SnackProvider>
+          <Marketplace Component={Component} pageProps={pageProps} />
+        </SnackProvider>
+      </AppStateProvider>
     </AuthProvider>
   );
 }

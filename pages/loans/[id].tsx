@@ -6,19 +6,19 @@ import {
   Container,
   Row,
 } from 'react-bootstrap';
-import { Loan } from '../../components/Types';
+import { Loan, LoanState } from '../../components/Types';
 import { AssetContract } from '../../typechain/AssetContract';
 import AssetContractJson from '../../artifacts/contracts/AssetContract.sol/AssetContract.json';
 import { LoanContract } from '../../typechain/LoanContract';
 import LoanContractJson from '../../artifacts/contracts/LoanContract.sol/LoanContract.json';
-import { AssetContractAddress, LoanContractAddress } from '../../utils/EnvVars';
+import { LoanContractAddress } from '../../utils/EnvVars';
 import { FetchState } from '../../components/Types';
 import { useAuth } from '../../components/AuthContext';
-import { Status, useSnack } from '../../components/SnackContext';
+import { useAppState } from '../../components/AppStateContext';
 
 function LoanDetails() {
   const auth = useAuth();
-  const snack = useSnack();
+  const { assets } = useAppState();
   const [loan, setLoan] = React.useState<Loan>();
   const [state, setState] = React.useState<FetchState>(FetchState.loading);
   const router = useRouter();
@@ -31,7 +31,7 @@ function LoanDetails() {
     loadLoan();
   }, [id, auth.signer]);
 
-  async function loadLoan() {
+  async function loadLoan(): Promise<void> {
     const loanContract = new ethers.Contract(
       LoanContractAddress,
       LoanContractJson.abi,
@@ -39,14 +39,11 @@ function LoanDetails() {
     ) as LoanContract;
     const loan = await loanContract.getLoan(BigNumber.from(id));
     const loanAmount = ethers.utils.formatUnits(loan.loanAmount.toString(), 'ether');
-    const interest = ethers.utils.formatUnits(loan.interest.toString(), 'ether');
-    const payments = ethers.utils.formatUnits(loan.paymentAmount.toString(), 'ether');
     const item: Loan = {
       id: loan.id.toNumber(),
       assetId: loan.assetId.toNumber(),
       loanAmount: loanAmount,
-      interest: interest,
-      paymentAmount: payments,
+      state: loan.state
     };
     setLoan(item);
     setState(FetchState.idle);
@@ -56,14 +53,21 @@ function LoanDetails() {
     return <div>Loading...</div>;
   }
 
+  const stateToText =
+    loan.state === LoanState.Pending
+      ? 'Pending'
+      : loan.state === LoanState.Approved
+      ? 'Approved'
+      : 'New';
+
   return (
     <Container>
       <Row>
         <Col>
           <Row className="mb-16">
             <Col>
-              <div className="fw-bold">Asset Id</div>
-              <div>{loan.assetId}</div>
+              <div className="fw-bold">Asset</div>
+              <div>{assets.find(f => f.id === loan.assetId)?.name}</div>
             </Col>
           </Row>
           <Row className="mb-16">
@@ -74,14 +78,8 @@ function LoanDetails() {
           </Row>
           <Row className="mb-16">
             <Col>
-              <div className="fw-bold">Payment</div>
-              <div>{loan.paymentAmount} ETH</div>
-            </Col>
-          </Row>
-          <Row className="mb-16">
-            <Col>
-              <div className="fw-bold">Interest</div>
-              <div>{loan.interest} ETH</div>
+              <div className="fw-bold">State</div>
+              <div>{stateToText}</div>
             </Col>
           </Row>
         </Col>

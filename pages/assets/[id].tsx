@@ -24,12 +24,13 @@ import { NftAddress, AssetContractAddress } from '../../utils/EnvVars';
 import { FetchState } from '../../components/Types';
 import { useAuth } from '../../components/AuthContext';
 import { Status, useSnack } from '../../components/SnackContext';
+import { useAppState } from '../../components/AppStateContext';
 
 function AssetDetails() {
   const auth = useAuth();
   const snack = useSnack();
+  const { loans } = useAppState();
   const [asset, setAsset] = React.useState<Asset>();
-  const [loans, setLoans] = React.useState<Loan[]>([]);
   const [state, setState] = React.useState<FetchState>(FetchState.loading);
   const [loanState, setLoanState] = React.useState<FetchState>(FetchState.loading);
   const [isSelling, setIsSelling] = React.useState<boolean>(false);
@@ -42,7 +43,6 @@ function AssetDetails() {
       return;
     }
     loadAsset();
-    getAvailableLoans();
   }, [id, auth.signer]);
 
   async function loadAsset() {
@@ -65,6 +65,7 @@ function AssetDetails() {
       seller: asset.seller,
       image: meta.image,
       state: asset.state,
+      owner: asset.owner,
     };
     setAsset(item);
     setState(FetchState.idle);
@@ -104,7 +105,7 @@ function AssetDetails() {
       AssetContractJson.abi,
       auth.signer
     ) as AssetContract;
-    const listingPrice = await assetContract.listingPrice();
+    const listingFee = await assetContract.listingFee();
 
     const tokenId = BigNumber.from(id);
     const priceInEth = ethers.utils.parseUnits(salePrice, 'ether');
@@ -112,7 +113,7 @@ function AssetDetails() {
     try {
       await tokenContract.approve(assetContract.address, tokenId);
       const transaction = await assetContract.listExistingAsset(tokenId, priceInEth, {
-        value: listingPrice,
+        value: listingFee,
       });
       await transaction.wait();
     } catch (e: unknown) {
@@ -125,26 +126,7 @@ function AssetDetails() {
     setIsSelling(false);
   }
 
-  async function getAvailableLoans() {
-    const assetContract = new ethers.Contract(
-      AssetContractAddress,
-      AssetContractJson.abi,
-      auth.signer
-    ) as AssetContract;
-    const assetLoans = []; // await assetContract.getAvailableAssetLoans(BigNumber.from(id));
-
-    const items: Loan[] = assetLoans.map((l: any) => {
-      return {
-        id: l.id.toNumber(),
-        name: ethers.utils.formatUnits(l.loanAmount.toString(), 'ether'),
-        assetId: l.assetId.toNumber(),
-        description: `Interest Rate of ${l.interest}`,
-      };
-    });
-
-    setLoans(items);
-    setLoanState(FetchState.idle);
-  }
+  const availableLoans = loans.filter((f: Loan) => f.assetId === parseInt(id as string));;
 
   if (state === FetchState.loading) {
     return <div>Loading...</div>;
@@ -253,27 +235,25 @@ function AssetDetails() {
           <Col md={6}>
             <Title>Available Loans</Title>
             <ListGroup>
-              {loanState === FetchState.loading ? (
-                <div>Loading...</div>
-              ) : !loans || loans.length === 0 ? (
+              {!availableLoans || availableLoans.length === 0 ? (
                 <div>No loans available</div>
               ) : (
-                loans.map((loan: Loan) => {
-                  return (
-                    <ListGroup.Item
-                      key={loan.id}
-                      className="d-flex justify-content-between align-items-start"
-                    >
-                      <div className="ms-2 me-auto">
-                        <div className="fw-bold">{loan.name} ETH</div>
-                        {loan.description}
-                      </div>
-                      <Link href={`${Routes.Loans}/${loan.id}`}>
-                        <Button>Apply</Button>
-                      </Link>
-                    </ListGroup.Item>
-                  );
-                })
+                availableLoans.map((m: Loan) => {
+                    return (
+                      <ListGroup.Item
+                        key={m.id}
+                        className="d-flex justify-content-between align-items-start"
+                      >
+                        <div className="ms-2 me-auto">
+                          <div className="fw-bold">{m.name} ETH</div>
+                          {m.description}
+                        </div>
+                        <Link href={`${Routes.Loans}/${m.id}`}>
+                          <Button>Apply</Button>
+                        </Link>
+                      </ListGroup.Item>
+                    );
+                  })
               )}
             </ListGroup>
           </Col>
