@@ -4,23 +4,22 @@ pragma solidity ^0.8.4;
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "hardhat/console.sol";
 import "./AssetContract.sol";
+import "hardhat/console.sol";
 
 /**
  * @author Derek Arends
  * @title A contract to manage ownership of loans
  */
-contract LoanContract is ReentrancyGuard, Ownable {
+contract LoanContract is ReentrancyGuard {
   /* 
    * State variables
    */
   using Counters for Counters.Counter;
   Counters.Counter private loanIds;
+  mapping(uint256 => Loan) private loans;
 
-  address private assetAddress;
-  mapping(uint256 => Loan) public loans;
+  AssetContract public assetContract;
 
   /* 
   * Enums/Structs
@@ -48,13 +47,14 @@ contract LoanContract is ReentrancyGuard, Ownable {
   event LoanRequest(uint256 loanId);
   event LoanApproved(uint256 loanId);
   event LoanDeclined(uint256 loanId);
+  event LogDepositReceived(address sender);
 
   /* 
    * Modifiers
    */
   modifier onlyLender(uint256 _loanId, string memory err) {
-     require(msg.sender == loans[_loanId].lender, err);
-     _;
+    require(msg.sender == loans[_loanId].lender, err);
+    _;
   }
 
   modifier onlyPendingLoans(uint256 _loanId, string memory err) {
@@ -63,13 +63,25 @@ contract LoanContract is ReentrancyGuard, Ownable {
   }
 
   modifier assetMustBeForSale(uint256 _assetId) {
-    AssetContract.Asset memory asset = AssetContract(assetAddress).getAsset(_assetId);
+    AssetContract.Asset memory asset = assetContract.getAsset(_assetId);
     require(asset.state == AssetContract.AssetState.ForSale && asset.seller != address(0), "Asset must be for sale");
     _;
   }
 
-  constructor(address _assetAddress) {
-    assetAddress = _assetAddress;
+  /**
+   * Constructor/Fallback
+   */
+  constructor(address _assetContract) {
+    assetContract = AssetContract(payable(_assetContract));
+  }
+
+  receive() external payable {
+    emit LogDepositReceived(msg.sender);
+  }
+
+  fallback() external payable { 
+    require(msg.data.length == 0); 
+    emit LogDepositReceived(msg.sender); 
   }
 
   /**
@@ -77,16 +89,16 @@ contract LoanContract is ReentrancyGuard, Ownable {
    */
 
   /**
-   * Get an individual loan based on _id
+   * @notice Get an individual loan based on _id
    * @param _id The id of the loan
    * @return The requested loan
    */
-  function getLoan(uint256 _id) public view returns(Loan memory) {
+  function getLoan(uint256 _id) external view returns(Loan memory) {
     return loans[_id];
   }
 
   /**
-   * Get all loans
+   * @notice Get all loans
    * @return loansToReturn is the list of loans available
    */
   function getAllLoans() external view returns(Loan[] memory loansToReturn) {
@@ -101,8 +113,8 @@ contract LoanContract is ReentrancyGuard, Ownable {
   }
 
   /**
-   * Creates an available loan for a given asset
-   * Will emit the LoanCreated event
+   * @notice Creates an available loan for a given asset
+   * @dev Will emit the LoanCreated event
    * @param _assetId The asset id
    */
   function createNewLoan(uint256 _assetId) 
@@ -110,7 +122,7 @@ contract LoanContract is ReentrancyGuard, Ownable {
     payable
     assetMustBeForSale(_assetId)
   {
-    AssetContract.Asset memory asset = AssetContract(assetAddress).getAsset(_assetId);
+    AssetContract.Asset memory asset = assetContract.getAsset(_assetId);
     require(msg.value >= asset.price, "Loan must be at least the amount of the asset");
 
     loanIds.increment();
@@ -129,7 +141,8 @@ contract LoanContract is ReentrancyGuard, Ownable {
   }
 
   /**
-   * Cancels the loan for a given loan id
+   * @notice Cancels the loan for a given loan id
+   * @dev emits LoanCancelled event
    * @param _loanId the id of the loan
    */
   function cancelLoan(uint256 _loanId) 
@@ -149,7 +162,8 @@ contract LoanContract is ReentrancyGuard, Ownable {
    }
 
    /**
-    * Allows a user to apply for a loan for a given asset
+    * @notice Allows a user to apply for a loan for a given asset
+    * @dev emits LoanRequest event
     * @param _loanId the id of the loan
     */
   function applyForLoan(uint256 _loanId) 
@@ -163,7 +177,8 @@ contract LoanContract is ReentrancyGuard, Ownable {
   }
 
   /**
-   * Approves a pending loan for a given asset
+   * @notice Approves a pending loan for a given asset
+   * @dev emits LoanApproved event
    * @param _loanId the id of the loan
    */
   function approveLoan(uint256 _loanId) 
@@ -173,21 +188,14 @@ contract LoanContract is ReentrancyGuard, Ownable {
   {
     loans[_loanId].state = LoanState.Approved;
 
-    AssetContract.Asset memory asset = AssetContract(assetAddress).getAsset(loans[_loanId].assetId);
-    (bool success, ) = assetAddress.call{value: asset.price}(
-      abi.encodeWithSignature("buyAssetWithLoan(address, uint256, uint256)" , 
-        address(this), 
-        _loanId, 
-        asset.id
-      )
-    );
-
-    require(success, "Failed to purchase asset with loan");
+    AssetContract.Asset memory asset = assetContract.getAsset(loans[_loanId].assetId);
+    assetContract.buyAssetWithLoan{value: asset.price}(this, _loanId, asset.id);
     emit LoanApproved(_loanId);
   }
 
-   /**
-   * Decline a pending loan for a given asset
+  /**
+   * @notice Decline a pending loan for a given asset
+   * @dev emits LoanDeclined event
    * @param _loanId the id of the loan
    */
   function declineLoan(uint256 _loanId)

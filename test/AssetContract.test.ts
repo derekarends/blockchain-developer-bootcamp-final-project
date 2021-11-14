@@ -59,7 +59,7 @@ describe(`${ContractName}`, () => {
         expect.fail('The transaction should have thrown an error');
       } catch (ex) {
         const err = ex as Error;
-        expect(err.message).to.contain('Only an owner can do this');
+        expect(err.message).to.contain('Ownable: caller is not the owner');
       }
     });
   });
@@ -88,7 +88,7 @@ describe(`${ContractName}`, () => {
         expect.fail('The transaction should have thrown an error');
       } catch (ex) {
         const err = ex as Error;
-        expect(err.message).to.contain('Only an owner can do this');
+        expect(err.message).to.contain('Ownable: caller is not the owner');
       }
     });
   });

@@ -19,10 +19,10 @@ contract AssetContract is ReentrancyGuard, Ownable {
    */
   using Counters for Counters.Counter;
   Counters.Counter private assetIds;
+  mapping(uint256 => Asset) private assets;
 
   uint256 public listingFee = 0.025 ether;
   uint256 public minAssetPrice = 0.5 ether;
-  mapping(uint256 => Asset) public assets;
 
   /* 
    * Enums/Structs
@@ -51,14 +51,26 @@ contract AssetContract is ReentrancyGuard, Ownable {
   event AssetCancelled(uint256 assetId);
   event AssetPending(uint256 assetId);
   event AssetSold(uint256 assetId);
+  event LogDepositReceived(address sender);
 
   /* 
    * Modifiers
    */
-
   modifier onlyForSale(Asset memory asset) {
     require(asset.seller != address(0) && asset.state == AssetState.ForSale, "Asset is not for sale");
     _;
+  }
+
+  /**
+   * Constructor/Fallback
+   */
+  receive() external payable {
+    emit LogDepositReceived(msg.sender);
+  }
+
+  fallback() external payable { 
+    require(msg.data.length == 0); 
+    emit LogDepositReceived(msg.sender); 
   }
 
   /* 
@@ -66,30 +78,30 @@ contract AssetContract is ReentrancyGuard, Ownable {
    */
 
   /**
-   * Set listing price
+   * @notice Set listing price
    */
-  function setListingFee(uint256 _newPrice) public onlyOwner {
+  function setListingFee(uint256 _newPrice) external onlyOwner {
     listingFee = _newPrice * (1 ether);
   }
 
   /**
-   * Set the minimum asset price
+   * @notice Set the minimum asset price
    */
-  function setMinimumAssetPrice(uint256 _newPrice) public onlyOwner {
+  function setMinimumAssetPrice(uint256 _newPrice) external onlyOwner {
     minAssetPrice = _newPrice * (1 ether);
   }
 
   /**
-   * Get an individual asset based on _id
+   * @notice Get an individual asset based on _id
    * @param _id The id of the asset
    * @return The requested asset
    */
-  function getAsset(uint256 _id) public view returns(Asset memory) {
+  function getAsset(uint256 _id) external view returns(Asset memory) {
     return assets[_id];
   }
 
   /**
-   * Get all assets
+   * @notice Get all assets
    * @return assetsToReturn is the list of assets available
    */
   function getAllAssets() 
@@ -107,9 +119,9 @@ contract AssetContract is ReentrancyGuard, Ownable {
     return assetsToReturn;
   }
 
-   /**
-   * Creates and lists a new asset
-   * Will emit the AssetListed event and required eth
+  /**
+   * @notice Creates and lists a new asset
+   * @dev Will emit the AssetListed event and required eth
    * @param _nftContract The Address of the nft
    * @param _tokenId The token id
    * @param _price The current price of the nft
@@ -146,70 +158,69 @@ contract AssetContract is ReentrancyGuard, Ownable {
   }
 
   /**
-   * Buys an asset
+   * @notice Buys an asset
+   * @dev emits AssetSold event
    * @param _id The Id of the asset to buy
    */
   function buyAsset(uint256 _id) 
-    public 
+    external 
     payable 
     onlyForSale(assets[_id])
     nonReentrant
   {
-    Asset storage asset = assets[_id];
-
-    require(asset.price == msg.value, "Invalid amount sent");
-    require(asset.seller != msg.sender, "No need to buy your own asset");
-    
-    IERC721(asset.nftContract).transferFrom(address(this), msg.sender, asset.tokenId);
-    asset.state = AssetState.NotForSale;
-    asset.owner = payable(msg.sender);
-
-    (bool sellerGotFunds, ) = asset.seller.call{value: asset.price}("");
-    require(sellerGotFunds, "Failed to transfer value to seller");
-
-    // clear seller after sending funds has succeeded
-    asset.seller = payable(address(0));
-
-    (bool feeTransfered, ) = owner().call{value: listingFee}("");
-    require(feeTransfered, "Failed to transfer fee");
-
-    emit AssetSold(_id);
+    completePurchase(_id, msg.sender, address(0));
   }
 
   /**
-   * Buys an asset with a loan
-   * @param _loanAddress The address of the loan contract
+   * @notice Buys an asset with a loan
+   * @dev emits AssetSold event
+   * @param _loanContract The address of the loan contract
    * @param _loanId is the id of the loan
    * @param _assetId is the id of the asset to buy
    */
   function buyAssetWithLoan(
-    address _loanAddress, 
+    LoanContract _loanContract, 
     uint256 _loanId,
     uint256 _assetId
   ) 
-    public 
+    external 
     payable 
     onlyForSale(assets[_assetId])
     nonReentrant
+  { 
+    require(msg.sender == address(_loanContract), "Only loan contract can call this");
+    LoanContract.Loan memory loan = _loanContract.getLoan(_loanId);
+    completePurchase(_assetId, loan.borrower, loan.lender);
+  }
+
+  /**
+   * @notice Completes the purchase
+   * @param _assetId is the id of the asset
+   * @param _newOwner is the new owner of the asset
+   * @param _lender is the lender of the asset
+   */
+  function completePurchase(
+    uint256 _assetId,
+    address _newOwner,
+    address _lender
+  ) 
+    private 
   {
-    require(msg.sender == _loanAddress, "Only lender contract can call this");
-    
     Asset storage asset = assets[_assetId];
-    LoanContract.Loan memory loan = LoanContract(_loanAddress).getLoan(_loanId);
-
-    require(msg.value == asset.price, "Invalid amount sent");
-    require(loan.borrower != asset.seller, "No need to buy your own asset");
     
-    IERC721(asset.nftContract).transferFrom(address(this), loan.borrower, asset.tokenId);
+    require(msg.value == asset.price, "Invalid amount sent");
+    require(_newOwner != asset.seller, "No need to buy your own asset");
+    
+    IERC721(asset.nftContract).transferFrom(address(this), _newOwner, asset.tokenId);
     asset.state = AssetState.NotForSale;
-    asset.owner = payable(loan.borrower);
-    asset.lender = payable(loan.lender);
+    asset.owner = payable(_newOwner);
+    asset.lender = payable(_lender);
 
-    (bool sellerGotFunds, ) = asset.seller.call{value: msg.value}("");
-    require(sellerGotFunds, "Failed to transfer value to seller");
-
-    // clear seller after sending funds has succeeded
+    address previousSeller = asset.seller;
     asset.seller = payable(address(0));
+
+    (bool sellerGotFunds, ) = previousSeller.call{value: msg.value}("");
+    require(sellerGotFunds, "Failed to transfer value to seller");
 
     (bool feeTransfered, ) = owner().call{value: listingFee}("");
     require(feeTransfered, "Failed to transfer fee");
@@ -217,8 +228,9 @@ contract AssetContract is ReentrancyGuard, Ownable {
     emit AssetSold(_assetId);
   }
 
-   /**
-   * Lists and existing asset
+  /**
+   * @notice Lists and existing asset
+   * @dev emits AssetListed event
    * @param _id The Id of the asset to list
    * @param _price The price of the asset
    */
@@ -243,7 +255,8 @@ contract AssetContract is ReentrancyGuard, Ownable {
   }
 
   /**
-   * Cancels the asset for sale for a given asset id
+   * @notice Cancels the asset for sale for a given asset id
+   * @dev emits AssetCancelled event
    * @param _assetId the id of the asset
    */
    function cancelListingAsset(uint256 _assetId) external onlyForSale(assets[_assetId]) {
