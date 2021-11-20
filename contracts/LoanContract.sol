@@ -189,7 +189,7 @@ contract LoanContract is ReentrancyGuard {
     loans[_loanId].state = LoanState.Approved;
 
     AssetContract.Asset memory asset = assetContract.getAsset(loans[_loanId].assetId);
-    assetContract.buyAssetWithLoan{value: asset.price}(this, _loanId, asset.id);
+    assetContract.buyAssetWithLoan{value: asset.price}(_loanId, asset.id);
     emit LoanApproved(_loanId);
   }
 

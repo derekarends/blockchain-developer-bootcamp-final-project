@@ -45,7 +45,7 @@ function AppStateProvider(props: any) {
   React.useEffect(() => {
     setState(FetchState.loading);
     getAssets().then(() => {
-        setState(FetchState.idle);
+      setState(FetchState.idle);
     });
   }, []);
 
@@ -60,15 +60,17 @@ function AppStateProvider(props: any) {
    * This will get noisey but wanted to learn to play with events
    * and how they could be used
    */
-  assetContract.on('AssetListed', getAssets);
-  assetContract.on('AssetCancelled', getAssets);
-  assetContract.on('AssetPending', getAssets);
-  assetContract.on('AssetSold', getAssets);
-  loanContract.on('LoanCreated', getLoans);
-  loanContract.on('LoanCancelled', getLoans);
-  loanContract.on('LoanRequest', getLoans);
-  loanContract.on('LoanApproved', getLoans);
-  loanContract.on('LoanDeclined', getLoans);
+  React.useCallback(() => {
+    assetContract.on('AssetListed', getAssets);
+    assetContract.on('AssetCancelled', getAssets);
+    assetContract.on('AssetPending', getAssets);
+    assetContract.on('AssetSold', getAssets);
+    loanContract.on('LoanCreated', getLoans);
+    loanContract.on('LoanCancelled', getLoans);
+    loanContract.on('LoanRequest', getLoans);
+    loanContract.on('LoanApproved', getLoans);
+    loanContract.on('LoanDeclined', getLoans);
+  }, [assetContract, loanContract])();
 
   async function getAssets(): Promise<void> {
     const data = await assetContract.getAllAssets();

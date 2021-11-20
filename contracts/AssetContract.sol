@@ -21,6 +21,7 @@ contract AssetContract is ReentrancyGuard, Ownable {
   Counters.Counter private assetIds;
   mapping(uint256 => Asset) private assets;
 
+  LoanContract public loanContract;
   uint256 public listingFee = 0.025 ether;
   uint256 public minAssetPrice = 0.5 ether;
 
@@ -76,6 +77,15 @@ contract AssetContract is ReentrancyGuard, Ownable {
   /* 
    * Functions
    */
+  
+  /**
+   * @notice set the loan contract
+   * @param _addr the address of the loan contract
+   */
+  
+  function setLoanContract(address _addr) external onlyOwner {
+    loanContract = LoanContract(payable(_addr));
+  }
 
   /**
    * @notice Set listing price
@@ -174,12 +184,10 @@ contract AssetContract is ReentrancyGuard, Ownable {
   /**
    * @notice Buys an asset with a loan
    * @dev emits AssetSold event
-   * @param _loanContract The address of the loan contract
    * @param _loanId is the id of the loan
    * @param _assetId is the id of the asset to buy
    */
   function buyAssetWithLoan(
-    LoanContract _loanContract, 
     uint256 _loanId,
     uint256 _assetId
   ) 
@@ -188,8 +196,8 @@ contract AssetContract is ReentrancyGuard, Ownable {
     onlyForSale(assets[_assetId])
     nonReentrant
   { 
-    require(msg.sender == address(_loanContract), "Only loan contract can call this");
-    LoanContract.Loan memory loan = _loanContract.getLoan(_loanId);
+    require(address(loanContract) != address(0) && msg.sender == address(loanContract), "Only loan contract can call this");
+    LoanContract.Loan memory loan = loanContract.getLoan(_loanId);
     completePurchase(_assetId, loan.borrower, loan.lender);
   }
 

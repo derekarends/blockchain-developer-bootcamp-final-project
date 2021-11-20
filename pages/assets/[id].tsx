@@ -27,6 +27,11 @@ import { Status, useSnack } from '../../components/SnackContext';
 import { useAppState } from '../../components/AppStateContext';
 import axios from 'axios';
 
+enum SellingState {
+  owner,
+  notOwner,
+}
+
 function AssetDetails() {
   const auth = useAuth();
   const snack = useSnack();
@@ -34,6 +39,7 @@ function AssetDetails() {
   const [asset, setAsset] = React.useState<Asset>();
   const [state, setState] = React.useState<FetchState>(FetchState.loading);
   const [isSelling, setIsSelling] = React.useState<boolean>(false);
+  const [sellingState, setSellingState] = React.useState<SellingState>(SellingState.notOwner);
   const [salePrice, setSalePrice] = React.useState<string>('0');
   const router = useRouter();
   const { id } = router.query;
@@ -44,6 +50,15 @@ function AssetDetails() {
     }
     loadAsset();
   }, [id, auth.signer]);
+
+  React.useEffect(() => {
+    if (!asset) {
+      return;
+    }
+    auth.signer.getAddress().then((addr: string) => {
+      setSellingState(addr === asset.owner ? SellingState.owner : SellingState.notOwner);
+    });
+  }, [asset]);
 
   async function loadAsset() {
     const tokenContract = new ethers.Contract(NftAddress, NFTContract.abi, auth.signer) as NFT;
@@ -131,7 +146,7 @@ function AssetDetails() {
     setIsSelling(false);
   }
 
-  const availableLoans = loans.filter((f: Loan) => f.assetId === parseInt(id as string));;
+  const availableLoans = loans.filter((f: Loan) => f.assetId === parseInt(id as string));
 
   if (state === FetchState.loading) {
     return <div>Loading...</div>;
@@ -141,7 +156,7 @@ function AssetDetails() {
     <Container>
       <Row>
         <Col md={4}>
-          <Image src={asset.image} width='300' />
+          <Image src={asset.image} width="100%" />
         </Col>
         <Col>
           <Row className="mb-16">
@@ -174,7 +189,7 @@ function AssetDetails() {
                 </Button>
               </Col>
             </Row>
-          ) : asset.state === AssetState.NotForSale ? (
+          ) : asset.state === AssetState.NotForSale && sellingState === SellingState.owner ? (
             <Row>
               <Col>
                 <Button
@@ -244,21 +259,21 @@ function AssetDetails() {
                 <div>No loans available</div>
               ) : (
                 availableLoans.map((m: Loan) => {
-                    return (
-                      <ListGroup.Item
-                        key={m.id}
-                        className="d-flex justify-content-between align-items-start"
-                      >
-                        <div className="ms-2 me-auto">
-                          <div className="fw-bold">{m.name}</div>
-                          {m.description}
-                        </div>
-                        <Link href={`${Routes.Loans}/${m.id}`}>
-                          <Button>Apply</Button>
-                        </Link>
-                      </ListGroup.Item>
-                    );
-                  })
+                  return (
+                    <ListGroup.Item
+                      key={m.id}
+                      className="d-flex justify-content-between align-items-start"
+                    >
+                      <div className="ms-2 me-auto">
+                        <div className="fw-bold">{m.name}</div>
+                        {m.description}
+                      </div>
+                      <Link href={`${Routes.Loans}/${m.id}`}>
+                        <Button>Apply</Button>
+                      </Link>
+                    </ListGroup.Item>
+                  );
+                })
               )}
             </ListGroup>
           </Col>

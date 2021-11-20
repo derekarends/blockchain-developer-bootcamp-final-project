@@ -210,6 +210,7 @@ describe(`${ContractName}`, () => {
     });
 
     it('should emit a loan was approved', async () => {
+      await assetContract.setLoanContract(loanContract.address);
       await createListingAndLoan(tokenId);
       const signers = await ethers.getSigners();
       await loanContract.connect(signers[1]).applyForLoan(tokenId);

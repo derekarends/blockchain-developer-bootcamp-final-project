@@ -229,6 +229,48 @@ describe(`${ContractName}`, () => {
   });
 
   /**
+   * buyAssetWithLoan Tests
+   */
+   describe('buyAssetWithLoan', async () => {
+    const tokenId = 1;
+    let owner: SignerWithAddress;
+    let seller: SignerWithAddress;
+    let buyer: SignerWithAddress;
+    beforeEach(async () => {
+      const signers = await ethers.getSigners();
+      owner = signers[0];
+      seller = signers[1];
+      buyer = signers[2];
+
+      await nft.connect(seller).createToken('https://www.mytokenlocation.com');
+      await assetContract
+        .connect(seller)
+        .listNewAsset(nft.address, tokenId, auctionPrice, { value: listingFee });
+    });
+
+    it('should require loan contract to be set', async () => {
+      try {
+        await assetContract.buyAssetWithLoan(tokenId, tokenId);
+        expect.fail('The transaction should have thrown an error');
+      } catch (ex) {
+        const err = ex as Error;
+        expect(err.message).to.contain('Only loan contract can call this');
+      }
+    });
+     
+    it('should require calling contract to be loan contract', async () => {
+      try {
+        await assetContract.setLoanContract(assetContract.address);
+        await assetContract.connect(buyer).buyAssetWithLoan(tokenId, tokenId);
+        expect.fail('The transaction should have thrown an error');
+      } catch (ex) {
+        const err = ex as Error;
+        expect(err.message).to.contain('Only loan contract can call this');
+      }
+    });
+  });
+
+  /**
    * listExistingAsset Tests
    */
   describe('listExistingAsset', async () => {
