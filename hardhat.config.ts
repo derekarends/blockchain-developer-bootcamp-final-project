@@ -9,6 +9,9 @@ const projectId = secrets.projectId;
 
 const config: HardhatUserConfig = {
   networks: {
+    localhost: {
+      url: "http://127.0.0.1:8545"
+    },
     hardhat: {
       chainId: 1337,
     },
@@ -17,7 +20,15 @@ const config: HardhatUserConfig = {
     //   accounts: [account]
     // }
   },
-  solidity: "0.8.4",
+  solidity: {
+    version: "0.8.4",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200
+      }
+    }
+  }
 };
 
 export default config;
