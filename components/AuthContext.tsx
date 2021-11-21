@@ -41,7 +41,7 @@ AuthContext.displayName = 'AuthContext';
 function AuthProvider(props: any) {
   const [state, setState] = React.useState<State>();
 
-  React.useLayoutEffect(() => {
+  React.useEffect(() => {
     isMetaMaskConnected().then((result: boolean) => {
       const { ethereum } = window;
       if (result && ethereum) {

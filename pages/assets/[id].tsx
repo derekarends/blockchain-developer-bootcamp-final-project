@@ -26,6 +26,7 @@ import { useAuth } from '../../components/AuthContext';
 import { Status, useSnack } from '../../components/SnackContext';
 import { useAppState } from '../../components/AppStateContext';
 import axios from 'axios';
+import { useLoading } from '../../components/Loading';
 
 enum SellingState {
   owner,
@@ -35,6 +36,7 @@ enum SellingState {
 function AssetDetails() {
   const auth = useAuth();
   const snack = useSnack();
+  const loading = useLoading();
   const { loans } = useAppState();
   const [asset, setAsset] = React.useState<Asset>();
   const [state, setState] = React.useState<FetchState>(FetchState.loading);
@@ -101,6 +103,7 @@ function AssetDetails() {
     ) as AssetContract;
 
     try {
+      loading.show();
       const price = ethers.utils.parseUnits(asset.price.toString(), 'ether');
       const transaction = await assetContract.buyAsset(BigNumber.from(id), {
         value: price,
@@ -112,6 +115,8 @@ function AssetDetails() {
       const err = e as EthError;
       snack.display(Status.error, err?.data?.message ?? 'Something went wrong');
       setState(FetchState.idle);
+    } finally {
+      loading.hide();
     }
 
     await loadAsset();
@@ -131,6 +136,7 @@ function AssetDetails() {
     const priceInEth = ethers.utils.parseUnits(salePrice, 'ether');
 
     try {
+      loading.show();
       await tokenContract.approve(assetContract.address, tokenId);
       const transaction = await assetContract.listExistingAsset(tokenId, priceInEth, {
         value: listingFee,
@@ -140,6 +146,8 @@ function AssetDetails() {
       const err = e as EthError;
       snack.display(Status.error, err?.data?.message ?? 'Something went wrong');
       setState(FetchState.idle);
+    } finally {
+      loading.hide();
     }
 
     await loadAsset();
@@ -177,7 +185,7 @@ function AssetDetails() {
               <div>{asset.price} ETH</div>
             </Col>
           </Row>
-          {asset.state === AssetState.ForSale ? (
+          {asset.state === AssetState.ForSale && sellingState !== SellingState.owner ? (
             <Row>
               <Col>
                 <Button

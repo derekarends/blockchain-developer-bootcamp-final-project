@@ -9,10 +9,12 @@ import { useAuth } from '../components/AuthContext';
 import { Status, useSnack } from '../components/SnackContext';
 import ListItem from '../components/ListItem';
 import { useAppState } from '../components/AppStateContext';
+import { useLoading } from '../components/Loading';
 
 function Dashboard() {
   const auth = useAuth();
   const snack = useSnack();
+  const loading = useLoading();
   const [myAddress, setAddress] = React.useState('');
   const appState = useAppState();
 
@@ -68,19 +70,25 @@ function Dashboard() {
 
   async function cancelAssetSale(id: number) {
     try {
+      loading.show();
       await appState.cancelAssetSale(id, auth.signer);
       snack.display(Status.success, 'Listing cancelled');
     } catch (e: unknown) {
       snack.display(Status.error, 'Error while trying to cancel listing');
+    } finally {
+      loading.hide();
     }
   }
 
   async function cancelLending(id: number) {
     try {
+      loading.show();
       await appState.cancelLending(id, auth.signer);
       snack.display(Status.success, 'Lending cancelled');
     } catch (e: unknown) {
       snack.display(Status.error, 'Error while trying to cancel lending');
+    } finally {
+      loading.hide();
     }
   }
 

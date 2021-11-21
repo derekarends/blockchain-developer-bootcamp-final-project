@@ -17,3 +17,29 @@
 .ml-8 {
   margin-left: 8px;
 }
+
+.overlay {
+  height: 100%;
+  position: absolute;
+  width: 100%;
+  z-index: 3;
+  opacity: 70%;
+  display: flex;
+  justify-content: center;
+  background-color: white;
+}
+
+.overlay-text-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  position: absolute;
+  width: 100%;
+  z-index: 5;
+}
+
+.overlay-text {
+  font-size: 24px;
+  color: black;
+}

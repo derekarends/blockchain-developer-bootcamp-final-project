@@ -11,11 +11,13 @@ import { Col, Button, Form } from 'react-bootstrap';
 import { Input, InputAmount } from '../../components/Input';
 import Routes from '../../utils/Routes';
 import { useSnack, Status } from '../../components/SnackContext';
+import { useLoading } from '../../components/Loading';
 
 function CreateLoan() {
   const auth = useAuth();
   const router = useRouter();
   const snack = useSnack();
+  const loading = useLoading();
   const [formInput, onFormInputChange] = React.useState<Loan>();
 
   async function save(e: any) {
@@ -33,6 +35,7 @@ function CreateLoan() {
     ) as LoanContract;
 
     try {
+      loading.show();
       const { assetId } = formInput;
       const tx = await loanContract.createNewLoan(assetId, {
         value: loanAmount,
@@ -42,6 +45,8 @@ function CreateLoan() {
     } catch (e: unknown) {
       const err = e as EthError;
       snack.display(Status.error, err?.data?.message ?? 'Something went wrong');
+    } finally {
+      loading.hide();
     }
   }
 

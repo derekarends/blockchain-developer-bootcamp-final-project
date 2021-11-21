@@ -5,14 +5,17 @@ import { AuthProvider } from '../components/AuthContext';
 import Marketplace from '../components/Marketplace';
 import { SnackProvider } from '../components/SnackContext';
 import { AppStateProvider } from '../components/AppStateContext';
+import { LoadingProvider } from '../components/Loading';
 
 function App({ Component, pageProps }) {
   return (
     <AuthProvider>
       <AppStateProvider>
-        <SnackProvider>
-          <Marketplace Component={Component} pageProps={pageProps} />
-        </SnackProvider>
+        <LoadingProvider>
+          <SnackProvider>
+            <Marketplace Component={Component} pageProps={pageProps} />
+          </SnackProvider>
+        </LoadingProvider>
       </AppStateProvider>
     </AuthProvider>
   );

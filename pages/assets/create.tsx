@@ -15,6 +15,7 @@ import { Input } from '../../components/Input';
 import Routes from '../../utils/Routes';
 import { useSnack, Status } from '../../components/SnackContext';
 import { toBase64 } from '../../utils/File';
+import { useLoading } from '../../components/Loading';
 
 const client = ipfsHttpClient({
   url: 'https://ipfs.infura.io:5001/api/v0'
@@ -24,6 +25,7 @@ function CreateAsset() {
   const auth = useAuth();
   const router = useRouter();
   const snack = useSnack();
+  const loading = useLoading();
   const [file, setFile] = React.useState(null);
   const [base64File, setBase64File] = React.useState(null);
   const [formInput, onFormInputChange] = React.useState<Asset>();
@@ -47,9 +49,16 @@ function CreateAsset() {
       return `https://ipfs.infura.io/ipfs/${added.path}`;
     } catch (e: unknown) {
       snack.display(Status.error, `Error uploading file`);
-      console.log(e);
       return '';
     }
+  }
+
+  function sleep(milliseconds: number): void {
+    const date = Date.now();
+    let currentDate = null
+    do {
+      currentDate = Date.now();
+    } while (currentDate - date < milliseconds)
   }
 
   async function save(e: any): Promise<void> {
@@ -58,7 +67,7 @@ function CreateAsset() {
       return;
     }
 
-    const fileUrl = await saveFile();
+    const fileUrl = ''; // await saveFile();
     const { name, description } = formInput;
     const data = JSON.stringify({
       name,
@@ -67,8 +76,8 @@ function CreateAsset() {
     });
 
     try {
-      const added = await client.add(data, { pin: false });
-      const url = `https://ipfs.infura.io/ipfs/${added.path}`;
+      // const added = await client.add(data, { pin: false });
+      const url = ''; //`https://ipfs.infura.io/ipfs/${added.path}`;
      listNewAsset(url);
     } catch (e: unknown) {
       const err = e as EthError;
@@ -77,26 +86,31 @@ function CreateAsset() {
   }
 
   async function listNewAsset(url: string): Promise<void> {
-    const nftContract = new ethers.Contract(NftAddress, NFTContract.abi, auth.signer) as NFT;
-    let transaction = await nftContract.createToken(url);
-    const tx = await transaction.wait();
-    const event = tx.events[0];
-    const value = event.args[2];
-    const tokenId = value.toNumber();
+    loading.show();
+    try {
+      const nftContract = new ethers.Contract(NftAddress, NFTContract.abi, auth.signer) as NFT;
+      let transaction = await nftContract.createToken(url);
+      const tx = await transaction.wait();
+      const event = tx.events[0];
+      const value = event.args[2];
+      const tokenId = value.toNumber();
 
-    const assetContract = new ethers.Contract(
-      AssetContractAddress,
-      AssetContractJson.abi,
-      auth.signer
-    ) as AssetContract;
+      const assetContract = new ethers.Contract(
+        AssetContractAddress,
+        AssetContractJson.abi,
+        auth.signer
+      ) as AssetContract;
 
-    const price = ethers.utils.parseUnits(formInput.price, 'ether');
-    const listingFee = await assetContract.listingFee();
-    transaction = await assetContract.listNewAsset(NftAddress, tokenId, price, {
-      value: listingFee,
-    });
-    await transaction.wait();
-    router.push(`${Routes.Dashboard}`);
+      const price = ethers.utils.parseUnits(formInput.price, 'ether');
+      const listingFee = await assetContract.listingFee();
+      transaction = await assetContract.listNewAsset(NftAddress, tokenId, price, {
+        value: listingFee,
+      });
+      await transaction.wait();
+      router.push(`${Routes.Dashboard}`);
+    } finally {
+      loading.hide();
+    }
   }
 
   return (

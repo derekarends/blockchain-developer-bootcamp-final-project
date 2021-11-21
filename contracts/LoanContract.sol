@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -18,6 +18,7 @@ contract LoanContract is ReentrancyGuard {
   using Counters for Counters.Counter;
   Counters.Counter private loanIds;
   mapping(uint256 => Loan) private loans;
+  mapping(address => uint256) private refunds;
 
   AssetContract public assetContract;
 
@@ -152,8 +153,7 @@ contract LoanContract is ReentrancyGuard {
   {
     require(loans[_loanId].borrower == address(0), "Can not cancel an existing loan");
 
-    (bool lenderGotFunds, ) = loans[_loanId].lender.call{value: loans[_loanId].loanAmount}("");
-    require(lenderGotFunds, "Failed to transfer loan back to lender");
+    refunds[msg.sender] = loans[_loanId].loanAmount;
 
     delete loans[_loanId];
     loanIds.decrement();
@@ -161,7 +161,17 @@ contract LoanContract is ReentrancyGuard {
     emit LoanCancelled(_loanId);
    }
 
-   /**
+  /**
+   * @notice Allows the lender to retrieve their funds after canceling a loan
+   */
+   function withdrawRefund() external {
+    require(refunds[msg.sender] > 0, "You have no refunds");
+
+    (bool success, ) = msg.sender.call{value: refunds[msg.sender]}("");
+    require(success, "Failed to transfer refund");
+   }
+
+  /**
     * @notice Allows a user to apply for a loan for a given asset
     * @dev emits LoanRequest event
     * @param _loanId the id of the loan
@@ -207,4 +217,13 @@ contract LoanContract is ReentrancyGuard {
     loans[_loanId].borrower = payable(address(0));
     emit LoanDeclined(_loanId);
   }
-}
+
+  /**
+   * @notice Allows a borrower to make a payment
+   * @param _loanId is the id of the loan to make a payment on
+   */
+  function makePayment(uint256 _loanId) external {
+    require(loans[_loanId].borrower == msg.sender, "Only the borrower can make a payment");
+    // TODO: Implement ability for users to make a payment
+  }
+ }

@@ -4,6 +4,7 @@ import { Container, Nav, Navbar } from 'react-bootstrap';
 import Routes from '../utils/Routes';
 import { Status, useAuth } from '../components/AuthContext';
 import Snack from './Snack';
+import { Loading } from './Loading';
 
 function Marketplace({ Component, pageProps }) {
   const auth = useAuth();
@@ -46,6 +47,7 @@ function Marketplace({ Component, pageProps }) {
           </Navbar.Collapse>
         </Container>
       </Navbar>
+      <Loading />
       <Container style={{ padding: '16px' }}>
         <Snack />
         <Component {...pageProps} />

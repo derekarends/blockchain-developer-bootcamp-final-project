@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -278,4 +278,12 @@ contract AssetContract is ReentrancyGuard, Ownable {
 
      emit AssetCancelled(_assetId);
    }
+
+  /**
+   * Allow a lender to reclaim the asset if loan is expired
+   */
+  function reclaimAsset(uint256 _assetId) external {
+    require (assets[_assetId].lender == msg.sender, "Ownly the lender can reclaim the asset");
+    // TODO: Implement functionality to allow lenders to reclaim assets
+  }
 }

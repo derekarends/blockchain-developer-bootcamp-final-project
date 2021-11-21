@@ -119,18 +119,27 @@ describe(`${ContractName}`, () => {
       }
     });
 
-    // it('should require loan to not have a borrower', async () => {
-    //   await createNft(1);
-    //   await marketplace.createNewLoan(1, 1, 1, { value: auctionPrice });
-    //   try {
-    //     const signers = await ethers.getSigners();
-    //     await marketplace.connect(signers[1]).cancelLoan(1);
-    //     expect.fail('The transaction should have thrown an error');
-    //   } catch (ex) {
-    //     const err = ex as Error;
-    //     expect(err.message).to.contain('Only the lender can canel the loan');
-    //   }
-    // });
+    it('should emit a loan was cancelled', async () => {
+      await createListingAndLoan(1);
+      const tx = await loanContract.cancelLoan(1);
+      expect(tx).to.emit(loanContract, 'LoanCancelled');
+    });
+  });
+
+  /**
+   * withdrawRefunds tests
+   */
+  describe('withdrawRefunds', async () => {
+    it('should require sender to have a refund', async () => {
+      try {
+        await loanContract.withdrawRefund();
+        expect.fail('The transaction should have thrown an error');
+      } catch (ex) {
+        const err = ex as Error;
+        expect(err.message).to.contain('You have no refunds');
+      }
+    });
+
     it('should refund lender loan amount', async () => {
       const signers = await ethers.getSigners();
       const lender = signers[1];
@@ -138,8 +147,9 @@ describe(`${ContractName}`, () => {
       await loanContract.connect(lender).createNewLoan(1, { value: assetPrice });
       const loan = await loanContract.getLoan(1);
       const negLoanAmount = BigNumber.from(loan.loanAmount).mul(-1);
+      await loanContract.connect(lender).cancelLoan(1);
 
-      const tx = await loanContract.connect(lender).cancelLoan(1);
+      const tx = await loanContract.connect(lender).withdrawRefund();
       expect(tx, 'contract balance should have decreased by loan amount').to.changeEtherBalance(
         loanContract,
         negLoanAmount
@@ -149,13 +159,7 @@ describe(`${ContractName}`, () => {
         loan.loanAmount
       );
     });
-
-    it('should emit a loan was cancelled', async () => {
-      await createListingAndLoan(1);
-      const tx = await loanContract.cancelLoan(1);
-      expect(tx).to.emit(loanContract, 'LoanCancelled');
-    });
-  });
+  })
 
   /**
    * applyForLoan Tests

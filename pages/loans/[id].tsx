@@ -10,11 +10,13 @@ import { FetchState } from '../../components/Types';
 import { useAuth } from '../../components/AuthContext';
 import { useAppState } from '../../components/AppStateContext';
 import { Status, useSnack } from '../../components/SnackContext';
+import { useLoading } from '../../components/Loading';
 
 function LoanDetails() {
   const auth = useAuth();
   const { assets } = useAppState();
   const snack = useSnack();
+  const loading = useLoading();
   const [loan, setLoan] = React.useState<Loan>();
   const [state, setState] = React.useState<FetchState>(FetchState.loading);
   const [user, setUser] = React.useState<'lender' | 'borrower' | undefined>();
@@ -59,42 +61,45 @@ function LoanDetails() {
   }
 
   async function apply(): Promise<void> {
-    setState(FetchState.buying);
     try {
+      loading.show();
       await loanContract.applyForLoan(BigNumber.from(id));
       setLoan({ ...loan, state: LoanState.Pending });
       snack.display(Status.success, 'Loan is pending approval');
     } catch (e: unknown) {
       const err = e as EthError;
       snack.display(Status.error, err?.data?.message ?? 'Error applying for loan');
+    } finally {
+      loading.hide();
     }
-    setState(FetchState.idle);
   }
 
   async function approve(): Promise<void> {
-    setState(FetchState.buying);
     try {
+      loading.show();
       await loanContract.approveLoan(BigNumber.from(id));
       setLoan({ ...loan, state: LoanState.Approved });
       snack.display(Status.success, 'Loan is approved');
     } catch (e: unknown) {
       const err = e as EthError;
       snack.display(Status.error, err?.data?.message ?? 'Error approving for loan');
+    } finally {
+      loading.hide();
     }
-    setState(FetchState.idle);
   }
 
   async function decline(): Promise<void> {
-    setState(FetchState.buying);
     try {
+      loading.show();
       await loanContract.declineLoan(BigNumber.from(id));
       setLoan({ ...loan, state: LoanState.New });
       snack.display(Status.success, 'Loan is was declined');
     } catch (e: unknown) {
       const err = e as EthError;
       snack.display(Status.error, err?.data?.message ?? 'Error declining for loan');
+    } finally {
+      loading.hide();
     }
-    setState(FetchState.idle);
   }
 
   if (state === FetchState.loading) {
@@ -113,10 +118,10 @@ function LoanDetails() {
       <>
         {loan.state === LoanState.Pending ? (
           <>
-            <Button onClick={approve} disabled={state === FetchState.selling}>
+            <Button onClick={approve}>
               Approve
             </Button>
-            <Button onClick={decline} disabled={state === FetchState.selling} variant='danger' className='ml-8'>
+            <Button onClick={decline} variant='danger' className='ml-8'>
               Decline
             </Button>
           </>
@@ -129,7 +134,7 @@ function LoanDetails() {
     return (
       <>
         {loan.state === LoanState.New ? (
-          <Button onClick={apply} disabled={state === FetchState.buying}>
+          <Button onClick={apply}>
             Apply
           </Button>
         ) : null}
