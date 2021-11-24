@@ -12,7 +12,7 @@ function Index() {
   if (state === FetchState.loading) {
     return <div>Loading...</div>
   }
-  
+
   const filteredAssets = assets?.filter((f: Asset) => f?.state === AssetState.ForSale);
   if (filteredAssets.length === 0) {
     return <div>No listings available</div>

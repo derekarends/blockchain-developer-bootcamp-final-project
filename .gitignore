@@ -39,4 +39,3 @@ artifacts
 
 node_modules
 typechain
-/utils/EnvVars.ts

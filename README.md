@@ -25,9 +25,10 @@ If the buyer is unable to pay the loan the lender would have the ability to take
 ### Backend
 
 - Run `yarn install` to download project dependencies
-- In one console window run `npx hardhat node` to start the hardhat server
-- In another console window run `npx hardhat run scripts/deploy.ts --network localhost` to deploy the contracts
-- Copy the following values from the terminal window into `EnvVars.ts`
+- In one console window run `yarn node` to start the hardhat server
+- In another console window run `yarn deploy-local` to deploy the contracts
+  - This will display addresses from the contracts deployed that will need to be copied
+- Copy the values from the terminal window into `.env.local`
   - AssetContract deployed address and replace value for `AssetContractAddress`
   - LoanContract deployed address and replace value for `LoanContractAddress`
   - NFT deployed address replace value for `NFTAddress`

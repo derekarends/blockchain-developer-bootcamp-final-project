@@ -53,21 +53,13 @@ function CreateAsset() {
     }
   }
 
-  function sleep(milliseconds: number): void {
-    const date = Date.now();
-    let currentDate = null
-    do {
-      currentDate = Date.now();
-    } while (currentDate - date < milliseconds)
-  }
-
   async function save(e: any): Promise<void> {
     e.preventDefault();
     if (!validateForm(e)) {
       return;
     }
 
-    const fileUrl = ''; // await saveFile();
+    const fileUrl = await saveFile();
     const { name, description } = formInput;
     const data = JSON.stringify({
       name,
@@ -76,8 +68,8 @@ function CreateAsset() {
     });
 
     try {
-      // const added = await client.add(data, { pin: false });
-      const url = ''; //`https://ipfs.infura.io/ipfs/${added.path}`;
+      const added = await client.add(data, { pin: false });
+      const url = `https://ipfs.infura.io/ipfs/${added.path}`;
      listNewAsset(url);
     } catch (e: unknown) {
       const err = e as EthError;
