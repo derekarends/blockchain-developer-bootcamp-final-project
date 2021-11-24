@@ -9,7 +9,7 @@ import NFTContract from '../../artifacts/contracts/NFT.sol/NFT.json';
 import AssetContractJson from '../../artifacts/contracts/AssetContract.sol/AssetContract.json';
 import { Asset, EthError } from '../../components/Types';
 import { useAuth } from '../../components/AuthContext';
-import { clearForm, validateForm } from '../../utils/FormValidator';
+import { validateForm } from '../../utils/FormValidator';
 import { Col, Button, InputGroup, FormGroup, Form, FormLabel, FormControl } from 'react-bootstrap';
 import { Input } from '../../components/Input';
 import Routes from '../../utils/Routes';
