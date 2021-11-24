@@ -9,7 +9,7 @@ import NFTContract from '../../artifacts/contracts/NFT.sol/NFT.json';
 import AssetContractJson from '../../artifacts/contracts/AssetContract.sol/AssetContract.json';
 import { Asset, EthError } from '../../components/Types';
 import { useAuth } from '../../components/AuthContext';
-import { validateForm } from '../../utils/FormValidator';
+import { clearForm, validateForm } from '../../utils/FormValidator';
 import { Col, Button, InputGroup, FormGroup, Form, FormLabel, FormControl } from 'react-bootstrap';
 import { Input } from '../../components/Input';
 import Routes from '../../utils/Routes';
@@ -54,6 +54,7 @@ function CreateAsset() {
   }
 
   async function save(e: any): Promise<void> {
+    loading.show();
     e.preventDefault();
     if (!validateForm(e)) {
       return;
@@ -71,14 +72,13 @@ function CreateAsset() {
       const added = await client.add(data, { pin: false });
       const url = `https://ipfs.infura.io/ipfs/${added.path}`;
      listNewAsset(url);
-    } catch (e: unknown) {
-      const err = e as EthError;
-      snack.display(Status.error, err?.data?.message ?? 'An error happened when listing the asset');
+    } catch (err: unknown) {
+      const ethErr = err as EthError;
+      snack.display(Status.error, ethErr?.data?.message ?? 'An error happened when listing the asset');
     }
   }
 
   async function listNewAsset(url: string): Promise<void> {
-    loading.show();
     try {
       const nftContract = new ethers.Contract(NftAddress, NFTContract.abi, auth.signer) as NFT;
       let transaction = await nftContract.createToken(url);
@@ -99,7 +99,11 @@ function CreateAsset() {
         value: listingFee,
       });
       await transaction.wait();
+      snack.display(Status.success, 'Asset has been created');
       router.push(`${Routes.Dashboard}`);
+    } catch (e: unknown) {
+      const err = e as EthError;
+      snack.display(Status.error, err?.data?.message ?? 'An error happened when listing the asset');
     } finally {
       loading.hide();
     }
@@ -108,7 +112,7 @@ function CreateAsset() {
   return (
     <Col md={{ span: 6, offset: 3 }}>
       <h2>Create an Asset</h2>
-      <Form onSubmit={save} className="needs-validation" noValidate>
+      <Form className="needs-validation" noValidate>
         <Input
           id="assetName"
           label="Name"

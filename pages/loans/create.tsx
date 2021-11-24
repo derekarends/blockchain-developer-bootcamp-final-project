@@ -41,10 +41,11 @@ function CreateLoan() {
         value: loanAmount,
       });
       await tx.wait();
+      snack.display(Status.success, 'Loan has been created');
       router.push(`${Routes.Dashboard}`);
-    } catch (e: unknown) {
-      const err = e as EthError;
-      snack.display(Status.error, err?.data?.message ?? 'Something went wrong');
+    } catch (err: unknown) {
+      const ethErr = err as EthError;
+      snack.display(Status.error, ethErr?.data?.message ?? 'Something went wrong');
     } finally {
       loading.hide();
     }
@@ -53,7 +54,7 @@ function CreateLoan() {
   return (
     <Col md={{ span: 6, offset: 3 }}>
       <h2>Create a Loan</h2>
-      <Form onSubmit={save} className="needs-validation" noValidate>
+      <Form className="needs-validation" noValidate>
         <Input
           id="assetId"
           label="Asset Id"

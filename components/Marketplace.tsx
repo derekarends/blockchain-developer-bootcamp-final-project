@@ -28,7 +28,7 @@ function Marketplace({ Component, pageProps }) {
     <>
       <Navbar bg="light" expand="lg">
         <Container>
-          <Navbar.Brand>Dapp Market</Navbar.Brand>
+          <Navbar.Brand>Eth-Bay</Navbar.Brand>
           <Navbar.Toggle aria-controls="basic-navbar-nav" />
           <Navbar.Collapse className="justify-content-end">
             <Nav>
@@ -47,7 +47,7 @@ function Marketplace({ Component, pageProps }) {
           </Navbar.Collapse>
         </Container>
       </Navbar>
-      <Loading />
+        <Loading/>
       <Container style={{ padding: '16px' }}>
         <Snack />
         <Component {...pageProps} />

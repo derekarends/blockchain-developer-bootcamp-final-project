@@ -18,7 +18,8 @@ type AppStateType = {
   cancelLending: (id: number, signer: ethers.Signer) => Promise<void>;
 };
 
-const provider = new ethers.providers.JsonRpcProvider();
+const provider = new ethers.providers.InfuraProvider("ropsten");
+// const provider = new ethers.providers.JsonRpcProvider();
 const tokenContract = new ethers.Contract(NftAddress, NFTContractJson.abi, provider) as NFT;
 const assetContract = new ethers.Contract(
   AssetContractAddress,

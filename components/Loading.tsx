@@ -19,13 +19,14 @@ function Loading() {
   if (!loading.isShowing) {
     return <></>;
   }
-
+  
   return (
     <div>
-      <div className='overlay-text-container'>
+      <div className="overlay-text-container">
         <p className="overlay-text">Verifying please wait...</p>
       </div>
-      <div className="overlay" />
+      <div className="overlay">
+      </div>
     </div>
   );
 }

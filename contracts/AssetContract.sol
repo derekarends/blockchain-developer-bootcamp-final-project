@@ -23,7 +23,7 @@ contract AssetContract is ReentrancyGuard, Ownable {
 
   LoanContract public loanContract;
   uint256 public listingFee = 0.025 ether;
-  uint256 public minAssetPrice = 0.5 ether;
+  uint256 public minAssetPrice = 0.1 ether;
 
   /* 
    * Enums/Structs
