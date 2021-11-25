@@ -8,7 +8,7 @@ If the buyer is unable to pay the loan the lender would have the ability to take
 
 ## Live Site
 
-[Eth-Bay](https://www.example.com)
+[Eth-Bay](https://eth-bay-final-project.vercel.app/)
 
 ## Walkthrough Video
 
@@ -20,7 +20,7 @@ If the buyer is unable to pay the loan the lender would have the ability to take
 
 - Node.js >= v16
 - Yarn
-- `git checkout master`
+- `git clone git@github.com:derekarends/blockchain-developer-bootcamp-final-project.git`
 
 ### Backend
 
@@ -32,7 +32,7 @@ If the buyer is unable to pay the loan the lender would have the ability to take
   - AssetContract deployed address and replace value for `AssetContractAddress`
   - LoanContract deployed address and replace value for `LoanContractAddress`
   - NFT deployed address replace value for `NFTAddress`
-- Finally run `yarn dev` to start the server
+- Finally run `yarn dev` to compile and to start the server(It may take a moment)
 
 ### Browser
 

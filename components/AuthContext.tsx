@@ -27,6 +27,10 @@ const isMetaMaskConnected = async () => {
     var provider = new ethers.providers.Web3Provider(ethereum);
   }
 
+  if (!provider) {
+    return false;
+  }
+  
   const accounts = await provider.listAccounts();
   return accounts.length > 0;
 };

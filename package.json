@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "npx hardhat compile && next build",
     "start": "next start",
-    "test": "npx hardhat test",
+    "test": "npx hardhat compile && npx hardhat test",
     "start-hardhat": "npx hardhat node",
     "deploy-local": "npx hardhat run scripts/deploy.ts --network localhost",
     "deploy-ropsten": "npx hardhat run scripts/deploy.ts --network ropsten"

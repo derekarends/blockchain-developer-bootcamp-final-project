@@ -70,7 +70,7 @@ describe(`${ContractName}`, () => {
   describe('getMinAssetPrice', async () => {
     it('should return the minimum asset price', async () => {
       const minAssetPrice = await assetContract.minAssetPrice();
-      expect(BigNumber.from(minAssetPrice)).to.eq(ethers.utils.parseUnits('0.5', 'ether'));
+      expect(BigNumber.from(minAssetPrice)).to.eq(ethers.utils.parseUnits('0.1', 'ether'));
     });
   });
 
