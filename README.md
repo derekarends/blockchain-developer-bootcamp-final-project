@@ -12,7 +12,7 @@ If the buyer is unable to pay the loan the lender would have the ability to take
 
 ## Walkthrough Video
 
-[Walkthrough of Eth-Bay](https://www.example.com)
+[Walkthrough of Eth-Bay](https://youtu.be/7Nb8UGTFNmI)
 
 ## To Run Locally
 
