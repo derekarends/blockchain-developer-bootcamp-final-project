@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 import axios from 'axios';
 import { AssetContract } from '../typechain/AssetContract';
 import AssetContractJson from '../artifacts/contracts/AssetContract.sol/AssetContract.json';
-import { AssetContractAddress, NftAddress, LoanContractAddress } from '../utils/EnvVars';
+import { AssetContractAddress, NftAddress, LoanContractAddress, Env } from '../utils/EnvVars';
 import { NFT } from '../typechain/NFT';
 import NFTContractJson from '../artifacts/contracts/NFT.sol/NFT.json';
 import { Asset, FetchState, Loan } from './Types';
@@ -18,8 +18,14 @@ type AppStateType = {
   cancelLending: (id: number, signer: ethers.Signer) => Promise<void>;
 };
 
-const provider = new ethers.providers.InfuraProvider("ropsten");
-// const provider = new ethers.providers.JsonRpcProvider();
+// If ropsten use the infura provider else use localhost
+let provider: ethers.providers.BaseProvider;
+if (Env === 'ropsten') {
+  provider = new ethers.providers.InfuraProvider('ropsten');
+} else {
+  provider = new ethers.providers.JsonRpcProvider();
+}
+
 const tokenContract = new ethers.Contract(NftAddress, NFTContractJson.abi, provider) as NFT;
 const assetContract = new ethers.Contract(
   AssetContractAddress,
