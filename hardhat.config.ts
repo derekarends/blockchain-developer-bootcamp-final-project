@@ -1,12 +1,12 @@
 import { HardhatUserConfig } from "hardhat/types";
 import "@nomiclabs/hardhat-waffle";
 import "@typechain/hardhat";
-import fs from "fs";
+// import fs from "fs";
 
-const file = fs.readFileSync(".secrets", 'utf8');
-const secrets = JSON.parse(file);
-const projectId = secrets.projectId;
-const privateKey = secrets.privateKey;
+// const file = fs.readFileSync(".secrets", 'utf8');
+// const secrets = JSON.parse(file);
+// const projectId = secrets.projectId;
+// const privateKey = secrets.privateKey;
 
 const config: HardhatUserConfig = {
   networks: {
@@ -16,10 +16,10 @@ const config: HardhatUserConfig = {
     localhost: {
       url: "http://127.0.0.1:8545"
     },
-    ropsten: {
-      url: `https://ropsten.infura.io/v3/${projectId}`,
-      accounts: [privateKey]
-    }
+    // ropsten: {
+    //   url: `https://ropsten.infura.io/v3/${projectId}`,
+    //   accounts: [privateKey]
+    // }
   },
   solidity: {
     version: "0.8.4",
