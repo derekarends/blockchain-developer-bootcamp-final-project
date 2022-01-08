@@ -6,17 +6,24 @@ import { Status, useAuth } from '../components/AuthContext';
 import Snack from './Snack';
 import { Loading } from './Loading';
 
+/**
+ * Create the Marketplace component
+ * @param param component and props
+ * @returns component
+ */
 function Marketplace({ Component, pageProps }) {
   const auth = useAuth();
   const [addr, setAddr] = React.useState('');
 
+  // Get the address of the connected wallet
   React.useEffect(() => {
     auth.signer?.getAddress().then((res: string) => {
       setAddr(`${res.slice(0, 8)}...`);
     });
   }, [auth.signer]);
 
-  function connectionStatus() {
+  // Check the connection status and return a navItem
+  function connectionStatus(): JSX.Element {
     switch (auth.status) {
       case Status.connecting:
         return <Nav.Item className="nav-link">Connecting...</Nav.Item>;
@@ -37,7 +44,9 @@ function Marketplace({ Component, pageProps }) {
         <Container>
           <Navbar.Brand>
             <Link href={'/'}>
-              <a className="nav-link" style={{ color: 'rgba(255, 255, 255, 0.75)' }}>Eth-Bay</a>
+              <a className="nav-link" style={{ color: 'rgba(255, 255, 255, 0.75)' }}>
+                Eth-Bay
+              </a>
             </Link>
           </Navbar.Brand>
           <Navbar.Toggle aria-controls="basic-navbar-nav" />
@@ -58,10 +67,10 @@ function Marketplace({ Component, pageProps }) {
           </Navbar.Collapse>
         </Container>
       </Navbar>
-      {auth.status === Status.error ? 
-        <Alert variant='primary'>{auth.message}</Alert> : null}
-      <Loading/>
+      <Loading />
       <Container style={{ padding: '16px' }}>
+        {auth.status === Status.error ?
+          <Alert variant="primary">{auth.message}</Alert> : null}
         <Snack />
         <Component {...pageProps} />
       </Container>

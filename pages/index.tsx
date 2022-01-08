@@ -6,6 +6,9 @@ import Routes from '../utils/Routes';
 import { FetchState } from '../components/Types';
 import { useAppState } from '../components/AppStateContext';
 
+/**
+ * Main display of the market place. Rendering the layout of all the assets for sale
+ */
 function Index() {
   const { assets, state } = useAppState();
 
@@ -13,6 +16,7 @@ function Index() {
     return <div>Loading...</div>
   }
 
+  // Only show the assets that are currently for sale
   const filteredAssets = assets?.filter((f: Asset) => f?.state === AssetState.ForSale);
   if (filteredAssets.length === 0) {
     return <div>No listings available</div>
@@ -23,8 +27,8 @@ function Index() {
       <Row>
         {filteredAssets.map((asset: Asset) => {
           return (
-            <Col key={asset.id}>
-              <Card style={{ width: '18rem', marginBottom: '10px' }}>
+            <Col key={asset.id} md={3}>
+              <Card className='paper' style={{ marginBottom: '16px' }}>
                 <Card.Img variant="top" src={asset.image} />
                 <Card.Body>
                   <Card.Title>{asset.name}</Card.Title>

@@ -17,10 +17,15 @@ import { useSnack, Status } from '../../components/SnackContext';
 import { toBase64 } from '../../utils/File';
 import { useLoading } from '../../components/Loading';
 
+// IPFS client connection
 const client = ipfsHttpClient({
   url: 'https://ipfs.infura.io:5001/api/v0'
 });
 
+/**
+ * Creates the CreateAsset component
+ * @returns component
+ */
 function CreateAsset() {
   const auth = useAuth();
   const router = useRouter();
@@ -30,6 +35,7 @@ function CreateAsset() {
   const [base64File, setBase64File] = React.useState(null);
   const [formInput, onFormInputChange] = React.useState<Asset>();
 
+  // Update the base64 of the image uploaded
   async function onFileInputChange(e: any): Promise<void> {
     const file = e.target.files[0];
     setFile(file);
@@ -37,6 +43,8 @@ function CreateAsset() {
     setBase64File(b64);
   }
 
+  // Save the uploaded file to IPFS
+  // returns the IPFS address
   async function saveFile(): Promise<string> {
     try {
       const added = await client.add(
@@ -53,31 +61,7 @@ function CreateAsset() {
     }
   }
 
-  async function save(e: any): Promise<void> {
-    loading.show();
-    e.preventDefault();
-    if (!validateForm(e)) {
-      return;
-    }
-
-    const fileUrl = await saveFile();
-    const { name, description } = formInput;
-    const data = JSON.stringify({
-      name,
-      description,
-      image: fileUrl,
-    });
-
-    try {
-      const added = await client.add(data, { pin: false });
-      const url = `https://ipfs.infura.io/ipfs/${added.path}`;
-     listNewAsset(url);
-    } catch (err: unknown) {
-      const ethErr = err as EthError;
-      snack.display(Status.error, ethErr?.data?.message ?? 'An error happened when listing the asset');
-    }
-  }
-
+  // Submit the transaction of the new asset
   async function listNewAsset(url: string): Promise<void> {
     try {
       const nftContract = new ethers.Contract(NftAddress, NFTContract.abi, auth.signer) as NFT;
@@ -109,8 +93,34 @@ function CreateAsset() {
     }
   }
 
+  // Validate and save the form
+  async function save(e: any): Promise<void> {
+    loading.show();
+    e.preventDefault();
+    if (!validateForm(e)) {
+      return;
+    }
+
+    const fileUrl = await saveFile();
+    const { name, description } = formInput;
+    const data = JSON.stringify({
+      name,
+      description,
+      image: fileUrl,
+    });
+
+    try {
+      const added = await client.add(data, { pin: false });
+      const url = `https://ipfs.infura.io/ipfs/${added.path}`;
+     listNewAsset(url);
+    } catch (err: unknown) {
+      const ethErr = err as EthError;
+      snack.display(Status.error, ethErr?.data?.message ?? 'An error happened when listing the asset');
+    }
+  }
+
   return (
-    <Col md={{ span: 6, offset: 3 }}>
+    <Col md={{ span: 4, offset: 4 }}>
       <h2>Create an Asset</h2>
       <Form className="needs-validation" noValidate>
         <Input

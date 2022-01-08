@@ -13,6 +13,10 @@ import Routes from '../../utils/Routes';
 import { useSnack, Status } from '../../components/SnackContext';
 import { useLoading } from '../../components/Loading';
 
+/**
+ * Creates the CreateLoan Component
+ * @returns component
+ */
 function CreateLoan() {
   const auth = useAuth();
   const router = useRouter();
@@ -20,6 +24,7 @@ function CreateLoan() {
   const loading = useLoading();
   const [formInput, onFormInputChange] = React.useState<Loan>();
 
+  // Validate and save the form
   async function save(e: any) {
     e.preventDefault();
     if (!validateForm(e)) {
@@ -52,7 +57,7 @@ function CreateLoan() {
   }
 
   return (
-    <Col md={{ span: 6, offset: 3 }}>
+    <Col md={{ span: 4, offset: 4 }}>
       <h2>Create a Loan</h2>
       <Form className="needs-validation" noValidate>
         <Input

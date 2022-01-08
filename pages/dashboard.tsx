@@ -11,6 +11,10 @@ import ListItem from '../components/ListItem';
 import { useAppState } from '../components/AppStateContext';
 import { useLoading } from '../components/Loading';
 
+/**
+ * Create the Dashboard component
+ * @returns component
+ */
 function Dashboard() {
   const auth = useAuth();
   const snack = useSnack();
@@ -19,19 +23,17 @@ function Dashboard() {
   const appState = useAppState();
 
   React.useEffect(() => {
-    if (!auth.signer) {
-      return;
-    }
-
-    auth.signer.getAddress().then((addr: string) => {
+    auth.signer?.getAddress().then((addr: string) => {
       setAddress(addr);
     });
   }, [auth.signer]);
 
+  // Gets the assets current user owns
   function getMyAssets(): Asset[] {
     return appState.assets.filter((f) => f.owner == myAddress);
   }
 
+  // Gets the assets the current user is selling
   function getMyListedAssets(): BaseType[] {
     return appState.assets
       .filter((f: Asset) => f.seller === myAddress)
@@ -44,6 +46,7 @@ function Dashboard() {
       });
   }
 
+  // Get the loans the current user is borrowing
   function getMyLoans(): BaseType[] {
     return appState.loans
       .filter((f: Loan) => f.borrower === myAddress)
@@ -56,6 +59,7 @@ function Dashboard() {
       });
   }
 
+  // Get the the loans the current user is issuing
   function getMyLendings(): BaseType[] {
     return appState.loans
       .filter((f: Loan) => f.lender === myAddress)
@@ -68,6 +72,7 @@ function Dashboard() {
       });
   }
 
+  // Allow the current user cancel their asset sale
   async function cancelAssetSale(id: number) {
     try {
       loading.show();
@@ -80,6 +85,7 @@ function Dashboard() {
     }
   }
 
+  // Allow current user cancel their current lending offer
   async function cancelLending(id: number) {
     try {
       loading.show();

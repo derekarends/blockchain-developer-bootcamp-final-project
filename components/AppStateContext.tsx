@@ -79,6 +79,9 @@ function AppStateProvider(props: any) {
     loanContract.on('LoanDeclined', getLoans);
   }, [assetContract, loanContract])();
 
+  /**
+   * Get all assets for the marketplace
+   */
   async function getAssets(): Promise<void> {
     const data = await assetContract.getAllAssets();
 
@@ -110,6 +113,9 @@ function AppStateProvider(props: any) {
     setAssets(items);
   }
 
+  /**
+   * Get all loans for the marketplace
+   */
   async function getLoans(): Promise<void> {
     const data = await loanContract.getAllLoans();
     const items: Loan[] = data.map((l: any) => {
@@ -134,6 +140,11 @@ function AppStateProvider(props: any) {
     setLoans(items);
   }
 
+  /**
+   * Allow cancelling the sale of an asset
+   * @param id Id of asset
+   * @param signer signer of this transaction
+   */
   async function cancelAssetSale(id: number, signer: ethers.Signer) {
     const assetContractWithSigner = new ethers.Contract(
       AssetContractAddress,
@@ -144,17 +155,13 @@ function AppStateProvider(props: any) {
     await assetContractWithSigner.cancelListingAsset(id);
     const filteredAssets = assets.filter((f: Asset) => f.id !== id);
     setAssets(filteredAssets);
-    // const origAssets = assets;
-    // try {
-    //   const filteredAssets = assets.filter((f: Asset) => f.id !== id);
-    //   setAssets(filteredAssets);
-    //   await assetContractWithSigner.cancelListingAsset(id);
-    // } catch (e: unknown) {
-    //   setAssets(origAssets);
-    //   throw e;
-    // }
   }
 
+  /**
+   * Allow cancelling of the open loan
+   * @param id Id of loan
+   * @param signer signer of this transaction
+   */
   async function cancelLending(id: number, signer: ethers.Signer) {
     const loanContractWithSigner = new ethers.Contract(
       LoanContractAddress,
@@ -165,15 +172,6 @@ function AppStateProvider(props: any) {
     await loanContractWithSigner.cancelLoan(id);
     const filteredLoans = loans.filter((f: Loan) => f.id !== id);
     setLoans(filteredLoans);
-    // const origLoans = loans;
-    // try {
-    //   const filteredLoans = loans.filter((f: Loan) => f.id !== id);
-    //   setLoans(filteredLoans);
-    //   await loanContractWithSigner.cancelLoan(id);
-    // } catch (e: unknown) {
-    //   setLoans(origLoans);
-    //   throw e;
-    // }
   }
 
   const value = React.useMemo(
