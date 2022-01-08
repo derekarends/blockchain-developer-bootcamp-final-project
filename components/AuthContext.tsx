@@ -2,7 +2,12 @@ import * as React from 'react';
 import { ethers } from 'ethers';
 import Web3Modal from 'web3modal';
 import { ChainId, NetworkName } from '../utils/EnvVars';
-import { JsonRpcSigner, Web3Provider } from '@ethersproject/providers';
+import {
+  JsonRpcProvider,
+  JsonRpcSigner,
+  Web3Provider,
+} from '@ethersproject/providers';
+import { provider as defaultProvider } from '../services/apiService';
 
 export enum Status {
   error,
@@ -25,14 +30,14 @@ type State = {
   message?: string;
 };
 
-async function isMetaMaskConnected(): Promise<[boolean, string, Web3Provider]> {
+async function isMetaMaskConnected(): Promise<[boolean, string, JsonRpcProvider]> {
   const { ethereum } = window;
   if (!ethereum) {
-    return [false, "No Ethereum Client Found", null];
+    return [false, 'No Ethereum Client Found', null];
   }
 
   const provider = new Web3Provider(ethereum);
-  const network = await provider.getNetwork()
+  const network = await provider.getNetwork();
   if (network.chainId !== ChainId) {
     return [false, `Please connect to ${NetworkName}`, provider];
   }
@@ -40,13 +45,11 @@ async function isMetaMaskConnected(): Promise<[boolean, string, Web3Provider]> {
   await provider.send('eth_requestAccounts', []);
   const signer = await provider.getSigner(0);
   if (signer === undefined) {
-    return [false, "No accounts connected", provider]; 
+    return [false, 'No accounts connected', provider];
   }
 
   return [true, '', provider];
-};
-
-
+}
 
 /**
  * Create an Auth context to be used throughout the application
@@ -58,15 +61,19 @@ function AuthProvider(props: any) {
   const [state, setState] = React.useState<State>();
 
   const checkConnectivity = React.useCallback(() => {
-    isMetaMaskConnected().then((metaMaskResult: [boolean, string, Web3Provider]) => {
+    isMetaMaskConnected().then((metaMaskResult: [boolean, string, JsonRpcProvider]) => {
       if (!metaMaskResult) {
         return;
       }
-      
+
       const [metaConnected, metaMessage, provider] = metaMaskResult;
       // if we are connected update state accordingly
       if (metaConnected) {
-        setState({ signer: provider.getSigner(), status: Status.connected, message: metaMessage });
+        setState({
+          signer: (provider as Web3Provider).getSigner(),
+          status: Status.connected,
+          message: metaMessage,
+        });
       } else {
         setState({ signer: null, status: Status.error, message: metaMessage });
       }
@@ -78,18 +85,18 @@ function AuthProvider(props: any) {
     if (!ethereum) {
       return;
     }
-    ethereum.on("accountsChanged", (accounts: any) => {
+    ethereum.on('accountsChanged', (accounts: any) => {
       checkConnectivity();
     });
 
-    ethereum.on("chainChanged", (chainId: any) => {
+    ethereum.on('chainChanged', (chainId: any) => {
       checkConnectivity();
     });
 
     ethereum.on('disconnect', (error: any) => {
       disconnect();
     });
-  }
+  };
 
   React.useEffect(() => {
     checkConnectivity();
@@ -115,7 +122,7 @@ function AuthProvider(props: any) {
       disconnect,
       signer: state?.signer,
       status: state?.status,
-      message: state?.message
+      message: state?.message,
     }),
     [connect, disconnect, state]
   );

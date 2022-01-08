@@ -2,68 +2,55 @@ import * as React from 'react';
 import { ethers, BigNumber } from 'ethers';
 import { useRouter } from 'next/router';
 import { Col, Container, Row, Button } from 'react-bootstrap';
-import { EthError, Loan, LoanState } from '../../components/Types';
-import { LoanContract } from '../../typechain/LoanContract';
-import LoanContractJson from '../../artifacts/contracts/LoanContract.sol/LoanContract.json';
-import { LoanContractAddress } from '../../utils/EnvVars';
+import { Asset, EthError, Loan, LoanState } from '../../components/Types';
 import { FetchState } from '../../components/Types';
 import { useAuth } from '../../components/AuthContext';
-import { useAppState } from '../../components/AppStateContext';
 import { Status, useSnack } from '../../components/SnackContext';
 import { useLoading } from '../../components/Loading';
+import { getAsset, getLoan, getLoanContract } from '../../services/apiService';
 
 function LoanDetails() {
   const auth = useAuth();
-  const { assets } = useAppState();
   const snack = useSnack();
   const loading = useLoading();
   const [loan, setLoan] = React.useState<Loan>();
+  const [asset, setAsset] = React.useState<Asset>();
   const [state, setState] = React.useState<FetchState>(FetchState.loading);
   const [user, setUser] = React.useState<'lender' | 'borrower' | undefined>();
   const router = useRouter();
   const { id } = router.query;
 
   React.useEffect(() => {
-    if (!id || !auth.signer) {
+    if (!id) {
       return;
     }
     loadLoan();
-  }, [id, auth.signer]);
+  }, [id]);
 
   React.useEffect(() => {
     if (!loan) {
       return;
     }
 
-    auth.signer.getAddress().then((addr: string) => {
+    auth.signer?.getAddress().then((addr: string) => {
       setUser(!loan.lender ? undefined : loan.lender === addr ? 'lender' : 'borrower');
     });
-  }, [loan]);
-
-  const loanContract = new ethers.Contract(
-    LoanContractAddress,
-    LoanContractJson.abi,
-    auth.signer
-  ) as LoanContract;
+  }, [loan, auth.signer]);
 
   async function loadLoan(): Promise<void> {
-    const loan = await loanContract.getLoan(BigNumber.from(id));
-    const loanAmount = ethers.utils.formatUnits(loan.loanAmount.toString(), 'ether');
-    const item: Loan = {
-      id: loan.id.toNumber(),
-      assetId: loan.assetId.toNumber(),
-      loanAmount: loanAmount,
-      state: loan.state,
-      lender: loan.lender,
-    };
-    setLoan(item);
+    const loan = await getLoan(BigNumber.from(id).toNumber());
+    setLoan(loan);
+
+    const loanAsset = await getAsset(loan.assetId);
+    setAsset(loanAsset);
+
     setState(FetchState.idle);
   }
 
   async function apply(): Promise<void> {
     try {
       loading.show();
-      await loanContract.applyForLoan(BigNumber.from(id));
+      await getLoanContract(auth.signer).applyForLoan(BigNumber.from(id));
       setLoan({ ...loan, state: LoanState.Pending });
       snack.display(Status.success, 'Loan is pending approval');
     } catch (e: unknown) {
@@ -77,7 +64,7 @@ function LoanDetails() {
   async function approve(): Promise<void> {
     try {
       loading.show();
-      await loanContract.approveLoan(BigNumber.from(id));
+      await getLoanContract(auth.signer).approveLoan(BigNumber.from(id));
       setLoan({ ...loan, state: LoanState.Approved });
       snack.display(Status.success, 'Loan is approved');
     } catch (e: unknown) {
@@ -91,7 +78,7 @@ function LoanDetails() {
   async function decline(): Promise<void> {
     try {
       loading.show();
-      await loanContract.declineLoan(BigNumber.from(id));
+      await getLoanContract(auth.signer).declineLoan(BigNumber.from(id));
       setLoan({ ...loan, state: LoanState.New });
       snack.display(Status.success, 'Loan is was declined');
     } catch (e: unknown) {
@@ -149,7 +136,7 @@ function LoanDetails() {
           <Row className="mb-16">
             <Col>
               <div className="fw-bold">Asset</div>
-              <div>{assets.find((f) => f.id === loan.assetId)?.name}</div>
+              <div>{asset?.name}</div>
             </Col>
           </Row>
           <Row className="mb-16">

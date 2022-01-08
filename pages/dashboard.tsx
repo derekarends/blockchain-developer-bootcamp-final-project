@@ -8,8 +8,8 @@ import { FetchState } from '../components/Types';
 import { useAuth } from '../components/AuthContext';
 import { Status, useSnack } from '../components/SnackContext';
 import ListItem from '../components/ListItem';
-import { useAppState } from '../components/AppStateContext';
 import { useLoading } from '../components/Loading';
+import { getLoans, getOwnerAssets, cancelAssetSale, cancelLending } from '../services/apiService';
 
 /**
  * Create the Dashboard component
@@ -20,7 +20,8 @@ function Dashboard() {
   const snack = useSnack();
   const loading = useLoading();
   const [myAddress, setAddress] = React.useState('');
-  const appState = useAppState();
+  const [assets, setAssets] = React.useState<Asset[]>([]);
+  const [loans, setLoans] = React.useState<Loan[]>([]);
 
   React.useEffect(() => {
     auth.signer?.getAddress().then((addr: string) => {
@@ -28,14 +29,22 @@ function Dashboard() {
     });
   }, [auth.signer]);
 
-  // Gets the assets current user owns
-  function getMyAssets(): Asset[] {
-    return appState.assets.filter((f) => f.owner == myAddress);
-  }
+  React.useEffect(() => {
+    if (!auth.signer) {
+      return;
+    }
+
+    getOwnerAssets(auth.signer).then((ownerAssets: Asset[]) => {
+      setAssets(ownerAssets);
+      getLoans(ownerAssets).then((assetLoans: Loan[]) => {
+        setLoans(assetLoans);
+      })
+    })
+  }, [auth.signer]);
 
   // Gets the assets the current user is selling
   function getMyListedAssets(): BaseType[] {
-    return appState.assets
+    return assets
       .filter((f: Asset) => f.seller === myAddress)
       .map((m: Asset) => {
         return {
@@ -48,7 +57,7 @@ function Dashboard() {
 
   // Get the loans the current user is borrowing
   function getMyLoans(): BaseType[] {
-    return appState.loans
+    return loans
       .filter((f: Loan) => f.borrower === myAddress)
       .map((m: Loan) => {
         return {
@@ -61,7 +70,7 @@ function Dashboard() {
 
   // Get the the loans the current user is issuing
   function getMyLendings(): BaseType[] {
-    return appState.loans
+    return loans
       .filter((f: Loan) => f.lender === myAddress)
       .map((m: Loan) => {
         return {
@@ -73,10 +82,11 @@ function Dashboard() {
   }
 
   // Allow the current user cancel their asset sale
-  async function cancelAssetSale(id: number) {
+  async function cancelAsset(id: number) {
     try {
       loading.show();
-      await appState.cancelAssetSale(id, auth.signer);
+      await cancelAssetSale(id, auth.signer);
+      setAssets(assets);
       snack.display(Status.success, 'Listing cancelled');
     } catch (e: unknown) {
       snack.display(Status.error, 'Error while trying to cancel listing');
@@ -86,10 +96,12 @@ function Dashboard() {
   }
 
   // Allow current user cancel their current lending offer
-  async function cancelLending(id: number) {
+  async function cancelMyLending(id: number) {
     try {
       loading.show();
-      await appState.cancelLending(id, auth.signer);
+      await cancelLending(id, auth.signer);
+      const l = loans.filter(f => f.id !== id);
+      setLoans(l);
       snack.display(Status.success, 'Lending cancelled');
     } catch (e: unknown) {
       snack.display(Status.error, 'Error while trying to cancel lending');
@@ -117,9 +129,8 @@ function Dashboard() {
           <Title>Owned Assets</Title>
           <ListGroup>
             <ListItem
-              items={getMyAssets()}
+              items={assets}
               route={Routes.Assets}
-              loading={appState.state === FetchState.loading}
             />
           </ListGroup>
         </Col>
@@ -130,9 +141,8 @@ function Dashboard() {
               items={getMyListedAssets()}
               route={Routes.Assets}
               onCancel={(id) => {
-                cancelAssetSale(id);
+                cancelAsset(id);
               }}
-              loading={appState.state === FetchState.loading}
             />
           </ListGroup>
         </Col>
@@ -144,7 +154,6 @@ function Dashboard() {
             <ListItem
               items={getMyLoans()}
               route={Routes.Loans}
-              loading={appState.state === FetchState.loading}
             />
           </ListGroup>
         </Col>
@@ -155,9 +164,8 @@ function Dashboard() {
               items={getMyLendings()}
               route={Routes.Loans}
               onCancel={(id) => {
-                cancelLending(id);
+                cancelMyLending(id);
               }}
-              loading={appState.state === FetchState.loading}
             />
           </ListGroup>
         </Col>

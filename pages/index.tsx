@@ -1,31 +1,36 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { Col, Container, Row, Button, Card } from 'react-bootstrap';
-import { Asset, AssetState } from '../components/Types';
+import { Asset, FetchState } from '../components/Types';
 import Routes from '../utils/Routes';
-import { FetchState } from '../components/Types';
-import { useAppState } from '../components/AppStateContext';
+import { getAssetsForSale } from '../services/apiService';
 
 /**
  * Main display of the market place. Rendering the layout of all the assets for sale
  */
 function Index() {
-  const { assets, state } = useAppState();
+  const [state, setState] = React.useState<FetchState>(FetchState.loading);
+  const [assets, setAssets] = React.useState<Asset[]>([]);
+
+  React.useEffect(() => {
+    getAssetsForSale().then((res: Asset[]) => {
+      setAssets(res);
+      setState(FetchState.idle);
+    });
+  }, []);
 
   if (state === FetchState.loading) {
     return <div>Loading...</div>
   }
 
-  // Only show the assets that are currently for sale
-  const filteredAssets = assets?.filter((f: Asset) => f?.state === AssetState.ForSale);
-  if (filteredAssets.length === 0) {
+  if (!assets || assets.length === 0) {
     return <div>No listings available</div>
   }
 
   return (
     <Container>
       <Row>
-        {filteredAssets.map((asset: Asset) => {
+        {assets.map((asset: Asset) => {
           return (
             <Col key={asset.id} md={3}>
               <Card className='paper' style={{ marginBottom: '16px' }}>

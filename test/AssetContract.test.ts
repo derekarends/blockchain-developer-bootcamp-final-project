@@ -150,6 +150,72 @@ describe(`${ContractName}`, () => {
   });
 
   /**
+   * getAllAssets Tests
+   */
+  describe('getAssetsForSale', async () => {
+    it('should return an empty list', async () => {
+      const items = await assetContract.getAssetsForSale();
+      expect(items).to.be.empty;
+    });
+
+    it('should return two results', async () => {
+      await createNft(1);
+      await createNft(2);
+
+      const items = await assetContract.getAssetsForSale();
+      expect(items.length).to.be.eq(2);
+      for (let i = 0; i < items.length; i++) {
+        expect(BigNumber.from(items[i].id).toNumber()).to.be.eq(i + 1);
+      }
+    });
+
+    it('should return one result', async () => {
+      await createNft(1);
+      await createNft(2);
+
+      const signers = await ethers.getSigners();
+      await assetContract.connect(signers[1]).buyAsset(1, { value: auctionPrice });
+
+      const items = await assetContract.getAssetsForSale();
+      expect(items.length).to.be.eq(1);
+      expect(BigNumber.from(items[0].id).toNumber()).to.be.eq(2);
+    });
+  });
+
+  /**
+   * getAllAssets Tests
+   */
+   describe('getOwnerAssets', async () => {
+    it('should return an empty list', async () => {
+      const items = await assetContract.getOwnerAssets();
+      expect(items).to.be.empty;
+    });
+
+    it('should return two results', async () => {
+      await createNft(1);
+      await createNft(2);
+
+      const items = await assetContract.getOwnerAssets();
+      expect(items.length).to.be.eq(2);
+      for (let i = 0; i < items.length; i++) {
+        expect(BigNumber.from(items[i].id).toNumber()).to.be.eq(i + 1);
+      }
+    });
+
+    it('should return one result', async () => {
+      await createNft(1);
+      await createNft(2);
+
+      const signers = await ethers.getSigners();
+      await assetContract.connect(signers[1]).buyAsset(1, { value: auctionPrice });
+
+      const items = await assetContract.getOwnerAssets();
+      expect(items.length).to.be.eq(1);
+      expect(BigNumber.from(items[0].id).toNumber()).to.be.eq(2);
+    });
+  });
+
+  /**
    * buyAsset Tests
    */
   describe('buyAsset', async () => {
@@ -231,7 +297,7 @@ describe(`${ContractName}`, () => {
   /**
    * buyAssetWithLoan Tests
    */
-   describe('buyAssetWithLoan', async () => {
+  describe('buyAssetWithLoan', async () => {
     const tokenId = 1;
     let owner: SignerWithAddress;
     let seller: SignerWithAddress;
@@ -257,7 +323,7 @@ describe(`${ContractName}`, () => {
         expect(err.message).to.contain('Only loan contract can call this');
       }
     });
-     
+
     it('should require calling contract to be loan contract', async () => {
       try {
         await assetContract.setLoanContract(assetContract.address);

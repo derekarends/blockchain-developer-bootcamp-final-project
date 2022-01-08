@@ -130,6 +130,68 @@ contract AssetContract is ReentrancyGuard, Ownable {
   }
 
   /**
+   * @notice Get all assets for sale
+   * @return assetsToReturn is the list of assets available
+   */
+  function getAssetsForSale() 
+    external 
+    view 
+    returns(Asset[] memory assetsToReturn) 
+  {
+    uint256 numOfAllAssets = assetIds.current();
+    uint256 numOfAssetsForSale = 0;
+
+    for (uint256 i = 1; i <= numOfAllAssets; i++) {
+      if (assets[i].seller != address(0) && assets[i].state == AssetState.ForSale) {
+        numOfAssetsForSale++;
+      }
+    }
+
+    assetsToReturn = new Asset[](numOfAssetsForSale);
+    uint256 currentIndex = 0;
+
+    for (uint256 i = 1; i <= numOfAllAssets; i++) {
+      if (assets[i].seller != address(0) && assets[i].state == AssetState.ForSale) {
+        assetsToReturn[currentIndex] = assets[i];
+        currentIndex += 1;
+      }
+    }
+
+    return assetsToReturn;
+  }
+
+  /**
+   * @notice Get all assets the owner has
+   * @return assetsToReturn is the list of assets available
+   */
+  function getOwnerAssets() 
+    external 
+    view 
+    returns(Asset[] memory assetsToReturn) 
+  {
+    uint256 numOfAllAssets = assetIds.current();
+    uint256 numOfAssetsOwned = 0;
+
+    for (uint256 i = 1; i <= numOfAllAssets; i++) {
+      if (assets[i].owner == msg.sender) {
+        numOfAssetsOwned += 1;
+      }
+    }
+
+    assetsToReturn = new Asset[](numOfAssetsOwned);
+    uint256 currentIndex = 0;
+    
+    for (uint256 i = 1; i <= numOfAllAssets; i++) {
+      if (assets[i].owner == msg.sender) {
+        assetsToReturn[currentIndex] = assets[i];
+        currentIndex += 1;
+      }
+    }
+
+    return assetsToReturn;
+  }
+
+  /**
    * @notice Creates and lists a new asset
    * @dev Will emit the AssetListed event and required eth
    * @param _nftContract The Address of the nft
