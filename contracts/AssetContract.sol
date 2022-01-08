@@ -111,25 +111,6 @@ contract AssetContract is ReentrancyGuard, Ownable {
   }
 
   /**
-   * @notice Get all assets
-   * @return assetsToReturn is the list of assets available
-   */
-  function getAllAssets() 
-    external 
-    view 
-    returns(Asset[] memory assetsToReturn) 
-  {
-    uint256 numOfAllAssets = assetIds.current();
-    assetsToReturn = new Asset[](numOfAllAssets);
-    
-    for (uint256 i = 0; i < numOfAllAssets; i++) {
-      assetsToReturn[i] = assets[i + 1];
-    }
-
-    return assetsToReturn;
-  }
-
-  /**
    * @notice Get all assets for sale
    * @return assetsToReturn is the list of assets available
    */

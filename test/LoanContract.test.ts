@@ -82,20 +82,47 @@ describe(`${ContractName}`, () => {
     });
   });
 
-  /**
-   * getAllLoans Tests
+   /**
+   * getOwnerLoans Tests
    */
-  describe('getAllLoans', async () => {
+    describe('getOwnerLoans', async () => {
+      it('should return an empty list', async () => {
+        const items = await loanContract.getOwnerLoans();
+        expect(items).to.be.empty;
+      });
+  
+      it('should return two results', async () => {
+        const signers = await ethers.getSigners();
+        const lender = signers[1];
+      
+        await createListingAndLoan(tokenId);
+        await loanContract.connect(lender).createNewLoan(tokenId, { value: assetPrice });
+  
+        const items = await loanContract.getOwnerLoans();
+        expect(items.length).to.be.eq(1);
+        for (let i = 0; i < items.length; i++) {
+          expect(BigNumber.from(items[i].id).toNumber()).to.be.eq(i + 1);
+        }
+      });
+    });
+  
+  /**
+   * getAllLoansForAsset Tests
+   */
+  describe('getAllLoansForAsset', async () => {
     it('should return an empty list', async () => {
-      const items = await loanContract.getAllLoans();
+      const items = await loanContract.getAllLoansForAsset(1);
       expect(items).to.be.empty;
     });
 
     it('should return two results', async () => {
+      const signers = await ethers.getSigners();
+      const lender = signers[1];
+    
       await createListingAndLoan(tokenId);
-      await loanContract.createNewLoan(tokenId, { value: assetPrice });
+      await loanContract.connect(lender).createNewLoan(tokenId, { value: assetPrice });
 
-      const items = await loanContract.getAllLoans();
+      const items = await loanContract.getAllLoansForAsset(tokenId);
       expect(items.length).to.be.eq(2);
       for (let i = 0; i < items.length; i++) {
         expect(BigNumber.from(items[i].id).toNumber()).to.be.eq(i + 1);
@@ -159,7 +186,7 @@ describe(`${ContractName}`, () => {
         loan.loanAmount
       );
     });
-  })
+  });
 
   /**
    * applyForLoan Tests
@@ -185,7 +212,7 @@ describe(`${ContractName}`, () => {
       expect(tx).to.emit(loanContract, 'LoanRequest');
     });
   });
-     
+
   /**
    * approveLoan Tests
    */
@@ -224,7 +251,6 @@ describe(`${ContractName}`, () => {
       expect(tx).to.emit(assetContract, 'AssetSold');
     });
   });
-
 
   /**
    * declineLoan Tests

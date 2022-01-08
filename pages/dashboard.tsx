@@ -4,12 +4,11 @@ import { Col, Container, Row, Button, ListGroup } from 'react-bootstrap';
 import { Loan, Asset, BaseType } from '../components/Types';
 import Title from '../components/Title';
 import Routes from '../utils/Routes';
-import { FetchState } from '../components/Types';
 import { useAuth } from '../components/AuthContext';
 import { Status, useSnack } from '../components/SnackContext';
 import ListItem from '../components/ListItem';
 import { useLoading } from '../components/Loading';
-import { getLoans, getOwnerAssets, cancelAssetSale, cancelLending } from '../services/apiService';
+import { getOwnerLoans, getOwnerAssets, cancelAssetSale, cancelLending } from '../services/apiService';
 
 /**
  * Create the Dashboard component
@@ -36,10 +35,10 @@ function Dashboard() {
 
     getOwnerAssets(auth.signer).then((ownerAssets: Asset[]) => {
       setAssets(ownerAssets);
-      getLoans(ownerAssets).then((assetLoans: Loan[]) => {
+      getOwnerLoans(auth.signer, ownerAssets).then((assetLoans: Loan[]) => {
         setLoans(assetLoans);
-      })
-    })
+      });
+    });
   }, [auth.signer]);
 
   // Gets the assets the current user is selling

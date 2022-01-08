@@ -20,7 +20,7 @@ import { useAuth } from '../../components/AuthContext';
 import { Status, useSnack } from '../../components/SnackContext';
 import { useLoading } from '../../components/Loading';
 import AvailableLoans from '../../components/AvailableLoans';
-import { getAssetContract, getLoans, getAsset } from '../../services/apiService';
+import { getAssetContract, getAsset, getLoansForAsset } from '../../services/apiService';
 
 enum SellingState {
   owner,
@@ -67,7 +67,7 @@ function AssetDetails() {
     const asset = await getAsset(BigNumber.from(id).toNumber());
     setAsset(asset);
 
-    const allLoans = await getLoans([asset]);
+    const allLoans = await getLoansForAsset(asset);
     setLoans(allLoans);
 
     setState(FetchState.idle);

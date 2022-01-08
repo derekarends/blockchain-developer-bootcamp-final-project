@@ -131,27 +131,6 @@ describe(`${ContractName}`, () => {
   /**
    * getAllAssets Tests
    */
-  describe('getAllAssets', async () => {
-    it('should return an empty list', async () => {
-      const items = await assetContract.getAllAssets();
-      expect(items).to.be.empty;
-    });
-
-    it('should return two results', async () => {
-      await createNft(1);
-      await createNft(2);
-
-      const items = await assetContract.getAllAssets();
-      expect(items.length).to.be.eq(2);
-      for (let i = 0; i < items.length; i++) {
-        expect(BigNumber.from(items[i].id).toNumber()).to.be.eq(i + 1);
-      }
-    });
-  });
-
-  /**
-   * getAllAssets Tests
-   */
   describe('getAssetsForSale', async () => {
     it('should return an empty list', async () => {
       const items = await assetContract.getAssetsForSale();

@@ -87,8 +87,16 @@ async function getLoan(id: number): Promise<Loan> {
 /**
  * Get all loans for the marketplace
  */
-async function getLoans(assets: Asset[]): Promise<Loan[]> {
-  const data = await getLoanContract(provider).getAllLoans();
+async function getLoansForAsset(asset: Asset): Promise<Loan[]> {
+  const data = await getLoanContract(provider).getAllLoansForAsset(asset.id);
+  return mapLoans(data, [asset]);
+}
+
+/**
+ * Get all loans for the marketplace
+ */
+ async function getOwnerLoans(signer: JsonRpcSigner, assets: Asset[]): Promise<Loan[]> {
+  const data = await getLoanContract(signer).getOwnerLoans();
   return mapLoans(data, assets);
 }
 
@@ -190,7 +198,8 @@ export {
   getAssetsForSale,
   getOwnerAssets,
   getLoan,
-  getLoans,
+  getOwnerLoans,
+  getLoansForAsset,
   cancelAssetSale,
   cancelLending,
   getLoanContract,

@@ -99,15 +99,58 @@ contract LoanContract is ReentrancyGuard {
   }
 
   /**
-   * @notice Get all loans
+   * @notice Get all owner loans
    * @return loansToReturn is the list of loans available
    */
-  function getAllLoans() external view returns(Loan[] memory loansToReturn) {
+  function getOwnerLoans() external view returns(Loan[] memory loansToReturn) {
     uint256 numOfAllLoans = loanIds.current();
-    loansToReturn = new Loan[](numOfAllLoans);
+    uint256 numOfLoansForAsset = 0;
 
-    for (uint256 i = 0; i < numOfAllLoans; i++) {
-        loansToReturn[i] = loans[i + 1];
+    for (uint256 i = 1; i <= numOfAllLoans; i++) {
+      bool isLenderOrBorrower = loans[i].lender == msg.sender || loans[i].borrower == msg.sender;
+      if (loans[i].lender != address(0) && isLenderOrBorrower) {
+        numOfLoansForAsset += 1;
+      }
+    }
+
+    loansToReturn = new Loan[](numOfLoansForAsset);
+    uint256 currentIndex = 0;
+
+    for (uint256 i = 1; i <= numOfAllLoans; i++) {
+      bool isLenderOrBorrower = loans[i].lender == msg.sender || loans[i].borrower == msg.sender;
+      if (loans[i].lender != address(0) && isLenderOrBorrower) {
+        loansToReturn[currentIndex] = loans[i];
+        currentIndex += 1;
+      }
+    }
+
+    return loansToReturn;
+  }
+
+
+  /**
+   * @notice Get all loans for a given asset
+   * @param _assetId the id of the asset to get loans for
+   * @return loansToReturn is the list of loans available
+   */
+  function getAllLoansForAsset(uint256 _assetId) external view returns(Loan[] memory loansToReturn) {
+    uint256 numOfAllLoans = loanIds.current();
+    uint256 numOfLoansForAsset = 0;
+
+    for (uint256 i = 1; i <= numOfAllLoans; i++) {
+      if (loans[i].assetId == _assetId) {
+        numOfLoansForAsset +=1 ;
+      }
+    }
+
+    loansToReturn = new Loan[](numOfLoansForAsset);
+    uint256 currentIndex = 0;
+
+    for (uint256 i = 1; i <= numOfAllLoans; i++) {
+      if (loans[i].assetId == _assetId) {
+        loansToReturn[currentIndex] = loans[i];
+        currentIndex += 1;
+      }
     }
 
     return loansToReturn;
