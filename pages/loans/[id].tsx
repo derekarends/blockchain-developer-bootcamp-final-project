@@ -1,14 +1,19 @@
 import * as React from 'react';
 import { ethers, BigNumber } from 'ethers';
 import { useRouter } from 'next/router';
-import { Col, Container, Row, Button } from 'react-bootstrap';
+import { Col, Container, Row, Button, Image } from 'react-bootstrap';
 import { Asset, EthError, Loan, LoanState } from '../../components/Types';
 import { FetchState } from '../../components/Types';
 import { useAuth } from '../../components/AuthContext';
 import { Status, useSnack } from '../../components/SnackContext';
 import { useLoading } from '../../components/Loading';
-import { getAsset, getLoan, getLoanContract } from '../../services/apiService';
+import { cancelLending, getAsset, getLoan, getLoanContract } from '../../services/apiService';
+import Routes from '../../utils/Routes';
 
+/**
+ * Create the loan details component
+ * @returns component
+ */
 function LoanDetails() {
   const auth = useAuth();
   const snack = useSnack();
@@ -37,16 +42,28 @@ function LoanDetails() {
     });
   }, [loan, auth.signer]);
 
+  /**
+   * Load the loan
+   */
   async function loadLoan(): Promise<void> {
-    const loan = await getLoan(BigNumber.from(id).toNumber());
-    setLoan(loan);
+    setState(FetchState.loading);
 
-    const loanAsset = await getAsset(loan.assetId);
-    setAsset(loanAsset);
+    try {
+      const loan = await getLoan(BigNumber.from(id).toNumber());
+      setLoan(loan);
 
-    setState(FetchState.idle);
+      const loanAsset = await getAsset(loan.assetId);
+      setAsset(loanAsset);
+      setState(FetchState.idle);
+    } catch {
+      setState(FetchState.error);
+      snack.display(Status.error, 'Error finding loan');
+    }
   }
 
+  /**
+   * Allow current user to apply for loan
+   */
   async function apply(): Promise<void> {
     try {
       loading.show();
@@ -61,6 +78,9 @@ function LoanDetails() {
     }
   }
 
+  /**
+   * Allow the lender to aprove the loan
+   */
   async function approve(): Promise<void> {
     try {
       loading.show();
@@ -75,6 +95,9 @@ function LoanDetails() {
     }
   }
 
+  /**
+   * Allow the lender to decline the loan
+   */
   async function decline(): Promise<void> {
     try {
       loading.show();
@@ -89,8 +112,26 @@ function LoanDetails() {
     }
   }
 
+  // Allow the lender to cancel thier lending offer
+  async function cancelOffer() {
+    try {
+      loading.show();
+      await cancelLending(parseInt(id as string), auth.signer);
+      snack.display(Status.success, 'Lending offer cancelled');
+      router.push(`${Routes.Dashboard}`);
+    } catch (e: unknown) {
+      snack.display(Status.error, 'Error while trying to cancel lending');
+    } finally {
+      loading.hide();
+    }
+  }
+
   if (state === FetchState.loading) {
     return <div>Loading...</div>;
+  }
+
+  if (state === FetchState.error) {
+    return <div></div>;
   }
 
   const stateToText =
@@ -105,14 +146,16 @@ function LoanDetails() {
       <>
         {loan.state === LoanState.Pending ? (
           <>
-            <Button onClick={approve}>
-              Approve
-            </Button>
-            <Button onClick={decline} variant='danger' className='ml-8'>
+            <Button onClick={approve}>Approve</Button>
+            <Button onClick={decline} variant="danger" className="ml-8">
               Decline
             </Button>
           </>
-        ) : null}
+        ) : (
+          <Button onClick={cancelOffer} variant="danger">
+            Cancel Offer
+          </Button>
+        )}
       </>
     );
   }
@@ -132,6 +175,9 @@ function LoanDetails() {
   return (
     <Container>
       <Row>
+        <Col md={4}>
+          <Image src={asset?.image} width="100%" className="paper rounded-corner"/>
+        </Col>
         <Col>
           <Row className="mb-16">
             <Col>
@@ -142,7 +188,7 @@ function LoanDetails() {
           <Row className="mb-16">
             <Col>
               <div className="fw-bold">Amount</div>
-              <div>{loan.loanAmount} ETH</div>
+              <div>{loan.name}</div>
             </Col>
           </Row>
           <Row className="mb-16">

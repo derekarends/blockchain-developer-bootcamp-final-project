@@ -149,7 +149,7 @@ async function mapAssets(data: any): Promise<Asset[]> {
       const price = ethers.utils.formatUnits(i.price.toString(), 'ether');
       const item: Asset = {
         id: i.tokenId.toNumber(),
-        name: `${i.tokenId.toNumber()}: ${meta?.data?.name ?? ''}`,
+        name: meta?.data?.name,
         description: meta?.data?.description,
         price,
         seller: i.seller,
@@ -171,14 +171,15 @@ async function mapAssets(data: any): Promise<Asset[]> {
  */
 function mapLoans(data: any, assets?: Asset[]): Loan[] {
   const items: Loan[] = data.map((l: any) => {
-    return {
+    const loan: Loan = {
       id: l.id.toNumber(),
       name: `${ethers.utils.formatUnits(l.loanAmount.toString(), 'ether')} ETH`,
       assetId: l.assetId.toNumber(),
       lender: l.lender,
       borrower: l.borrower,
-      state: l.state,
+      state: l.state
     };
+    return loan;
   });
 
   items.forEach((loan: Loan) => {

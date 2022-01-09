@@ -5,10 +5,10 @@ import { Loan, Asset, BaseType } from '../components/Types';
 import Title from '../components/Title';
 import Routes from '../utils/Routes';
 import { useAuth } from '../components/AuthContext';
-import { Status, useSnack } from '../components/SnackContext';
+import { useSnack } from '../components/SnackContext';
 import ListItem from '../components/ListItem';
 import { useLoading } from '../components/Loading';
-import { getOwnerLoans, getOwnerAssets, cancelAssetSale, cancelLending } from '../services/apiService';
+import { getOwnerLoans, getOwnerAssets } from '../services/apiService';
 
 /**
  * Create the Dashboard component
@@ -80,35 +80,6 @@ function Dashboard() {
       });
   }
 
-  // Allow the current user cancel their asset sale
-  async function cancelAsset(id: number) {
-    try {
-      loading.show();
-      await cancelAssetSale(id, auth.signer);
-      setAssets(assets);
-      snack.display(Status.success, 'Listing cancelled');
-    } catch (e: unknown) {
-      snack.display(Status.error, 'Error while trying to cancel listing');
-    } finally {
-      loading.hide();
-    }
-  }
-
-  // Allow current user cancel their current lending offer
-  async function cancelMyLending(id: number) {
-    try {
-      loading.show();
-      await cancelLending(id, auth.signer);
-      const l = loans.filter(f => f.id !== id);
-      setLoans(l);
-      snack.display(Status.success, 'Lending cancelled');
-    } catch (e: unknown) {
-      snack.display(Status.error, 'Error while trying to cancel lending');
-    } finally {
-      loading.hide();
-    }
-  }
-
   return (
     <Container>
       <Row className="mb-16">
@@ -139,9 +110,6 @@ function Dashboard() {
             <ListItem
               items={getMyListedAssets()}
               route={Routes.Assets}
-              onCancel={(id) => {
-                cancelAsset(id);
-              }}
             />
           </ListGroup>
         </Col>
@@ -162,9 +130,6 @@ function Dashboard() {
             <ListItem
               items={getMyLendings()}
               route={Routes.Loans}
-              onCancel={(id) => {
-                cancelMyLending(id);
-              }}
             />
           </ListGroup>
         </Col>

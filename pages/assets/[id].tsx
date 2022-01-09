@@ -20,7 +20,12 @@ import { useAuth } from '../../components/AuthContext';
 import { Status, useSnack } from '../../components/SnackContext';
 import { useLoading } from '../../components/Loading';
 import AvailableLoans from '../../components/AvailableLoans';
-import { getAssetContract, getAsset, getLoansForAsset } from '../../services/apiService';
+import {
+  getAssetContract,
+  getAsset,
+  getLoansForAsset,
+  cancelAssetSale,
+} from '../../services/apiService';
 
 enum SellingState {
   owner,
@@ -64,6 +69,8 @@ function AssetDetails() {
 
   // Load the asset using id from query string
   async function loadAsset(): Promise<void> {
+    setState(FetchState.loading);
+    
     const asset = await getAsset(BigNumber.from(id).toNumber());
     setAsset(asset);
 
@@ -126,6 +133,20 @@ function AssetDetails() {
     setIsSelling(false);
   }
 
+  // Allow the current user cancel their asset sale
+  async function cancelAsset() {
+    try {
+      loading.show();
+      await cancelAssetSale(parseInt(id as string), auth.signer);
+      await loadAsset();
+      snack.display(Status.success, 'Listing cancelled');
+    } catch (e: unknown) {
+      snack.display(Status.error, 'Error while trying to cancel listing');
+    } finally {
+      loading.hide();
+    }
+  }
+
   // Get all the available loans
   const availableLoans = loans.filter((f: Loan) => f.assetId === parseInt(id as string));
 
@@ -138,9 +159,15 @@ function AssetDetails() {
     <Container>
       <Row>
         <Col md={4}>
-          <Image src={asset.image} width="100%" className="paper rounded-corner"/>
+          <Image src={asset.image} width="100%" className="paper rounded-corner" />
         </Col>
         <Col>
+          <Row className="mb-16">
+            <Col>
+              <div className="fw-bold">Id</div>
+              <div>{asset.id}</div>
+            </Col>
+          </Row>
           <Row className="mb-16">
             <Col>
               <div className="fw-bold">Title</div>
@@ -163,7 +190,6 @@ function AssetDetails() {
             <Row>
               <Col>
                 <Button
-                  style={{ width: '64px' }}
                   onClick={buyAsset}
                   disabled={state === FetchState.buying}
                 >
@@ -175,13 +201,26 @@ function AssetDetails() {
             <Row>
               <Col>
                 <Button
-                  style={{ width: '64px' }}
                   onClick={() => {
                     setIsSelling(true);
                   }}
                   disabled={isSelling}
                 >
                   Sell
+                </Button>
+              </Col>
+            </Row>
+          ) : asset.state === AssetState.ForSale && sellingState === SellingState.owner ? (
+            <Row>
+              <Col>
+                <Button
+                  variant='danger'
+                  onClick={() => {
+                    cancelAsset();
+                  }}
+                  disabled={isSelling}
+                >
+                  Cancel Sale
                 </Button>
               </Col>
             </Row>
@@ -233,7 +272,7 @@ function AssetDetails() {
         </Col>
       </Row>
       {asset.state === AssetState.ForSale ? (
-        <Row className='mt-16'>
+        <Row className="mt-16">
           <Col md={6}>
             <AvailableLoans availableLoans={availableLoans} />
           </Col>

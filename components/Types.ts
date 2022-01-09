@@ -33,7 +33,8 @@ export enum FetchState {
   loading,
   idle,
   buying,
-  selling
+  selling,
+  error
 }
 
 export enum AssetState {
