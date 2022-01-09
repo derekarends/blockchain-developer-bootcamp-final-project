@@ -86,7 +86,7 @@ function LoanDetails() {
       loading.show();
       await getLoanContract(auth.signer).approveLoan(BigNumber.from(id));
       setLoan({ ...loan, state: LoanState.Approved });
-      snack.display(Status.success, 'Loan is approved');
+      snack.display(Status.success, 'Loan is being approved');
     } catch (e: unknown) {
       const err = e as EthError;
       snack.display(Status.error, err?.data?.message ?? 'Error approving for loan');
@@ -103,7 +103,7 @@ function LoanDetails() {
       loading.show();
       await getLoanContract(auth.signer).declineLoan(BigNumber.from(id));
       setLoan({ ...loan, state: LoanState.New });
-      snack.display(Status.success, 'Loan is was declined');
+      snack.display(Status.success, 'Loan is being declined');
     } catch (e: unknown) {
       const err = e as EthError;
       snack.display(Status.error, err?.data?.message ?? 'Error declining for loan');
@@ -112,12 +112,14 @@ function LoanDetails() {
     }
   }
 
-  // Allow the lender to cancel thier lending offer
+  /**
+   * Allow the lender to cancel thier lending offer
+   */
   async function cancelOffer() {
     try {
       loading.show();
       await cancelLending(parseInt(id as string), auth.signer);
-      snack.display(Status.success, 'Lending offer cancelled');
+      snack.display(Status.success, 'Lending offer is being cancelled');
       router.push(`${Routes.Dashboard}`);
     } catch (e: unknown) {
       snack.display(Status.error, 'Error while trying to cancel lending');
@@ -141,6 +143,10 @@ function LoanDetails() {
       ? 'Approved'
       : 'New';
 
+  /**
+   * Render the buttons available when a lendering is viewing the loan
+   * @returns element
+   */
   function renderLender() {
     return (
       <>
@@ -160,6 +166,10 @@ function LoanDetails() {
     );
   }
 
+  /**
+   * Render the buttons available when a borrower is viewing the loan
+   * @returns element
+   */
   function renderBorrower() {
     return (
       <>

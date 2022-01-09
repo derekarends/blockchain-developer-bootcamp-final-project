@@ -5,10 +5,9 @@ import { Loan, Asset, BaseType } from '../components/Types';
 import Title from '../components/Title';
 import Routes from '../utils/Routes';
 import { useAuth } from '../components/AuthContext';
-import { useSnack } from '../components/SnackContext';
 import ListItem from '../components/ListItem';
-import { useLoading } from '../components/Loading';
-import { getOwnerLoans, getOwnerAssets } from '../services/apiService';
+import { useSnack, Status } from '../components/SnackContext';
+import { getOwnerLoans, getOwnerAssets, withdrawRefund } from '../services/apiService';
 
 /**
  * Create the Dashboard component
@@ -17,7 +16,6 @@ import { getOwnerLoans, getOwnerAssets } from '../services/apiService';
 function Dashboard() {
   const auth = useAuth();
   const snack = useSnack();
-  const loading = useLoading();
   const [myAddress, setAddress] = React.useState('');
   const [assets, setAssets] = React.useState<Asset[]>([]);
   const [loans, setLoans] = React.useState<Loan[]>([]);
@@ -41,8 +39,10 @@ function Dashboard() {
     });
   }, [auth.signer]);
 
-  // Gets the assets the current user is selling
-  function getMyListedAssets(): BaseType[] {
+  /**
+   * Gets the assets the current user is selling
+   */
+  const getMyListedAssets = React.useCallback((): BaseType[] => {
     return assets
       .filter((f: Asset) => f.seller === myAddress)
       .map((m: Asset) => {
@@ -52,10 +52,12 @@ function Dashboard() {
           description: m.description,
         };
       });
-  }
+  },[assets]);
 
-  // Get the loans the current user is borrowing
-  function getMyLoans(): BaseType[] {
+  /**
+   * Get the loans the current user is borrowing
+   */
+  const getMyLoans = React.useCallback((): BaseType[] => {
     return loans
       .filter((f: Loan) => f.borrower === myAddress)
       .map((m: Loan) => {
@@ -65,10 +67,12 @@ function Dashboard() {
           description: m.description,
         };
       });
-  }
+  }, [loans]);
 
-  // Get the the loans the current user is issuing
-  function getMyLendings(): BaseType[] {
+  /**
+   * Get the the loans the current user is issuing
+   */
+  const getMyLendings = React.useCallback((): BaseType[] => {
     return loans
       .filter((f: Loan) => f.lender === myAddress)
       .map((m: Loan) => {
@@ -78,6 +82,18 @@ function Dashboard() {
           description: m.description,
         };
       });
+  }, [loans]);
+
+  /**
+   * Get refunds for any cancelled loans
+   */
+  async function getRefund(): Promise<void> {
+    try {
+      await withdrawRefund(auth.signer);
+      snack.display(Status.success, 'Refunds are on the way');
+    } catch {
+      snack.display(Status.error, 'There was an error getting refund');
+    }
   }
 
   return (
@@ -90,27 +106,26 @@ function Dashboard() {
             </Button>
           </Link>
           <Link href={Routes.CreateLoan}>
-            <Button variant="outline-primary">Create Loan</Button>
+            <Button variant="outline-primary" className="mr-16">
+              Create Loan
+            </Button>
           </Link>
+          <Button variant="outline-primary" onClick={getRefund}>
+            Withdraw Refunds
+          </Button>
         </div>
       </Row>
       <Row className="mb-24">
         <Col md={6}>
           <Title>Owned Assets</Title>
           <ListGroup>
-            <ListItem
-              items={assets}
-              route={Routes.Assets}
-            />
+            <ListItem items={assets} route={Routes.Assets} />
           </ListGroup>
         </Col>
         <Col md={6}>
           <Title>Selling Assets</Title>
           <ListGroup>
-            <ListItem
-              items={getMyListedAssets()}
-              route={Routes.Assets}
-            />
+            <ListItem items={getMyListedAssets()} route={Routes.Assets} />
           </ListGroup>
         </Col>
       </Row>
@@ -118,19 +133,13 @@ function Dashboard() {
         <Col md={6}>
           <Title>Loans</Title>
           <ListGroup>
-            <ListItem
-              items={getMyLoans()}
-              route={Routes.Loans}
-            />
+            <ListItem items={getMyLoans()} route={Routes.Loans} />
           </ListGroup>
         </Col>
         <Col md={6}>
           <Title>Lendings</Title>
           <ListGroup>
-            <ListItem
-              items={getMyLendings()}
-              route={Routes.Loans}
-            />
+            <ListItem items={getMyLendings()} route={Routes.Loans} />
           </ListGroup>
         </Col>
       </Row>

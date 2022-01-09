@@ -7,10 +7,14 @@ type Props = {
   items: BaseType[];
   route: string;
   loading?: boolean;
-  onCancel?: (id: number) => void;
 };
 
-function ListItem({ items, route, loading, onCancel }: Props) {
+/**
+ * Dashboard list item
+ * @param Props 
+ * @returns element
+ */
+function ListItem({ items, route, loading }: Props) {
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -30,11 +34,6 @@ function ListItem({ items, route, loading, onCancel }: Props) {
           <Link href={`${route}/${item.id}`}>
             <Button>Details</Button>
           </Link>
-          {onCancel ? (
-            <Button variant="danger" onClick={() => onCancel(item.id)} className='ml-8'>
-              Cancel
-            </Button>
-          ) : null}
         </div>
       </ListGroup.Item>
     );

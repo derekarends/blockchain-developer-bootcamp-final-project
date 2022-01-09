@@ -8,6 +8,11 @@ type Props = {
   onInputChange: (e: any) => void;
 };
 
+/**
+ * Wraps the Input element
+ * @param Props 
+ * @returns element
+ */
 function Input({ id, label, className, onInputChange }: Props) {
   return (
     <FormGroup className={`mb-3 ${className}`}>
@@ -20,6 +25,11 @@ function Input({ id, label, className, onInputChange }: Props) {
   );
 }
 
+/**
+ * Wraps input with ETH tag
+ * @param Props 
+ * @returns element
+ */
 function InputAmount({ id, label, onInputChange }: Props) {
   return (
     <FormGroup className="mb-3">

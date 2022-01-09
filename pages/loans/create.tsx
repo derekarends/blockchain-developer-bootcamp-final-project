@@ -24,8 +24,12 @@ function CreateLoan() {
   const loading = useLoading();
   const [formInput, onFormInputChange] = React.useState<Loan>();
 
-  // Validate and save the form
-  async function save(e: any) {
+  /**
+   * Validate and save the form
+   * @param e 
+   * @returns Promise<void> 
+   */
+  async function save(e: any): Promise<void> {
     e.preventDefault();
     if (!validateForm(e)) {
       return;

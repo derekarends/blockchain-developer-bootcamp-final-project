@@ -49,7 +49,9 @@ function AssetDetails() {
   const router = useRouter();
   const { id } = router.query;
 
-  // If there is an id and a signer load the asset
+  /**
+   * If there is an id and a signer load the asset
+   */
   React.useEffect(() => {
     if (!id) {
       return;
@@ -57,7 +59,9 @@ function AssetDetails() {
     loadAsset();
   }, [id]);
 
-  // If there is an asset get the signers address and set selling state
+  /**
+   * If there is an asset get the signers address and set selling state
+   */
   React.useEffect(() => {
     if (!asset) {
       return;
@@ -67,10 +71,12 @@ function AssetDetails() {
     });
   }, [asset, auth.signer]);
 
-  // Load the asset using id from query string
+  /**
+   * Load the asset using id from query string
+   */
   async function loadAsset(): Promise<void> {
     setState(FetchState.loading);
-    
+
     const asset = await getAsset(BigNumber.from(id).toNumber());
     setAsset(asset);
 
@@ -80,7 +86,9 @@ function AssetDetails() {
     setState(FetchState.idle);
   }
 
-  // If the current user does not own this asset, allow the user to buy the asset
+  /**
+   * If the current user does not own this asset, allow the user to buy the asset
+   */
   async function buyAsset(): Promise<void> {
     setState(FetchState.buying);
 
@@ -104,7 +112,9 @@ function AssetDetails() {
     await loadAsset();
   }
 
-  // If the current user is the owner, allow the user to sell asset
+  /**
+   * If the current user is the owner, allow the user to sell asset
+   */
   async function sellAsset(): Promise<void> {
     setState(FetchState.selling);
     const tokenContract = new ethers.Contract(NftAddress, NFTContract.abi, auth.signer) as NFT;
@@ -133,7 +143,9 @@ function AssetDetails() {
     setIsSelling(false);
   }
 
-  // Allow the current user cancel their asset sale
+  /**
+   * Allow the current user cancel their asset sale
+   */
   async function cancelAsset() {
     try {
       loading.show();

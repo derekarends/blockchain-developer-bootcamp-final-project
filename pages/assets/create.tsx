@@ -17,7 +17,9 @@ import { useSnack, Status } from '../../components/SnackContext';
 import { toBase64 } from '../../utils/File';
 import { useLoading } from '../../components/Loading';
 
-// IPFS client connection
+/**
+ * IPFS client connection
+ */
 const client = ipfsHttpClient({
   url: 'https://ipfs.infura.io:5001/api/v0'
 });
@@ -35,7 +37,11 @@ function CreateAsset() {
   const [base64File, setBase64File] = React.useState(null);
   const [formInput, onFormInputChange] = React.useState<Asset>();
 
-  // Update the base64 of the image uploaded
+  /**
+   * Update the base64 of the image uploaded
+   * @param e 
+   * @returns Promise<void>
+   */
   async function onFileInputChange(e: any): Promise<void> {
     const file = e.target.files[0];
     setFile(file);
@@ -43,8 +49,10 @@ function CreateAsset() {
     setBase64File(b64);
   }
 
-  // Save the uploaded file to IPFS
-  // returns the IPFS address
+  /**
+   * Save the uploaded file to IPFS
+   * @returns Promise<string> IPFS address
+   */
   async function saveFile(): Promise<string> {
     try {
       const added = await client.add(
@@ -61,7 +69,11 @@ function CreateAsset() {
     }
   }
 
-  // Submit the transaction of the new asset
+  /**
+   * Submit the transaction of the new asset
+   * @param url 
+   * @returns Promise<void>
+   */
   async function listNewAsset(url: string): Promise<void> {
     try {
       const nftContract = new ethers.Contract(NftAddress, NFTContract.abi, auth.signer) as NFT;
@@ -93,7 +105,11 @@ function CreateAsset() {
     }
   }
 
-  // Validate and save the form
+  /**
+   * Validate and save the form
+   * @param e 
+   * @returns Promise<void>
+   */
   async function save(e: any): Promise<void> {
     loading.show();
     e.preventDefault();

@@ -15,14 +15,19 @@ function Marketplace({ Component, pageProps }) {
   const auth = useAuth();
   const [addr, setAddr] = React.useState('');
 
-  // Get the address of the connected wallet
+  /**
+   * Get the address of the connected wallet
+   */
   React.useEffect(() => {
     auth.signer?.getAddress().then((res: string) => {
       setAddr(`${res.slice(0, 8)}...`);
     });
   }, [auth.signer]);
 
-  // Check the connection status and return a navItem
+  /**
+   * Check the connection status and return a navItem
+   * @returns element
+   */
   function connectionStatus(): JSX.Element {
     switch (auth.status) {
       case Status.connecting:

@@ -131,6 +131,20 @@ async function cancelLending(id: number, signer: ethers.Signer): Promise<void> {
 }
 
 /**
+ * Allow getting refund for any cancelled loans
+ * @param signer signer of this transaction
+ */
+ async function withdrawRefund(signer: ethers.Signer): Promise<void> {
+  const loanContractWithSigner = new ethers.Contract(
+    LoanContractAddress,
+    LoanContractJson.abi,
+    signer
+  ) as LoanContract;
+
+  await loanContractWithSigner.withdrawRefund();
+}
+
+/**
  * Map asset response from contract to asset model
  * @param data
  * @returns Promise<Asset[]>
@@ -205,4 +219,5 @@ export {
   cancelLending,
   getLoanContract,
   getAssetContract,
+  withdrawRefund
 };

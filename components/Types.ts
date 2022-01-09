@@ -1,3 +1,7 @@
+/**
+ * Types available through the application
+ */
+
 export type BaseType = {
   id: number,
   name?: string,
